@@ -48,7 +48,7 @@
                             <thead>
                                 <tr>
                                     <th class="text-center">เลขที่ใบเสร็จ</th>
-                                    <th class="text-center">โต้ะ</th>
+                                    <th class="text-center">รูปแบบการชำระ</th>
                                     <th class="text-center">ยอดรวมทั้งหมด</th>
                                     <th class="text-center">วันที่ชำระ</th>
                                     <th class="text-center">จัดการ</th>
@@ -111,13 +111,14 @@
                             <div class="col-12 d-flex justify-content-center mb-3" id="qr_code">
                             </div>
                         </div>
-                        <input type="hidden" id="table_id">
+                        <input type="hidden" id="order_id">
                     </div>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-primary" id="confirm_pay">ยืนยันชำระเงิน</button>
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ปิด</button>
+                <button type="button" class="btn btn-sm btn-primary confirm_pay" data-id="0">ชำระเงินสด</button>
+                <button type="button" class="btn btn-sm btn-primary confirm_pay" data-id="1">ชำระโอนเงิน</button>
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">ปิด</button>
             </div>
         </div>
     </div>
@@ -273,12 +274,12 @@
             columns: [{
                     data: 'payment_number',
                     class: 'text-center',
-                    width: '20%'
+                    width: '15%'
                 },
                 {
-                    data: 'table_id',
+                    data: 'type',
                     class: 'text-center',
-                    width: '10%'
+                    width: '15%'
                 },
                 {
                     data: 'total',
@@ -357,7 +358,7 @@
                 $('#modal-pay').modal('show');
                 $('#totalPay').html(total + ' บาท');
                 $('#qr_code').html(response);
-                $('#table_id').val(id);
+                $('#order_id').val(id);
             }
         });
     });
@@ -370,14 +371,16 @@
         Swal.close();
     });
 
-    $('#confirm_pay').click(function(e) {
+    $('.confirm_pay').click(function(e) {
         e.preventDefault();
-        var id = $('#table_id').val();
+        var id = $('#order_id').val();
+        var value = $(this).data('id');
         $.ajax({
-            url: "{{route('confirm_pay')}}",
+            url: "{{route('confirm_pay_rider')}}",
             type: "post",
             data: {
-                id: id
+                id: id,
+                value: value
             },
             headers: {
                 'X-CSRF-TOKEN': '{{ csrf_token() }}'

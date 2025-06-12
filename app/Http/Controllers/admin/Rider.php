@@ -125,9 +125,10 @@ class Rider extends Controller
             'message' => '',
             'data' => []
         ];
-        $table = RiderSend::select('rider_sends.*', 'users.name', 'users_addresses.lat', 'users_addresses.long', 'users_addresses.tel', 'users_addresses.detail', 'orders.total')
+        $table = RiderSend::select('rider_sends.*', 'users.name', 'users_addresses.lat', 'users_addresses.long', 'users_addresses.tel', 'users_addresses.detail', 'orders.total', 'orders.is_pay')
             ->where('rider_sends.status', 0)
             ->where('rider_id', Session::get('user')->id)
+            ->where('orders.status', 2)
             ->join('orders', 'orders.id', '=', 'rider_sends.order_id')
             ->join('users', 'users.id', '=', 'orders.users_id')
             ->join('users_addresses', 'users_addresses.id', '=', 'orders.address_id')
@@ -136,7 +137,11 @@ class Rider extends Controller
         if (count($table) > 0) {
             $info = [];
             foreach ($table as $rs) {
-                $pay = '<button data-id="' . $rs->order_id . '" data-total="' . $rs->total . '" type="button" class="btn btn-sm btn-outline-success modalPay">ชำระเงิน</button>';
+                if ($rs->is_pay != 0) {
+                    $pay = '<button data-id="' . $rs->order_id . '" data-total="' . $rs->total . '" type="button" class="btn btn-sm btn-outline-success confirm_order">ชำระเงินแล้ว (ยืนยันการจัดส่ง)</button>';
+                } else {
+                    $pay = '<button data-id="' . $rs->order_id . '" data-total="' . $rs->total . '" type="button" class="btn btn-sm btn-outline-success modalPay">ชำระเงิน</button>';
+                }
                 $action = '<button data-id="' . $rs->order_id . '" type="button" class="btn btn-sm btn-outline-primary modalShow m-1">รายละเอียด</button>' . $pay;
                 $info[] = [
                     'name' => $rs->name,
@@ -169,6 +174,52 @@ class Rider extends Controller
                 $pay = new Pay();
                 $pay->payment_number = $this->generateRunningNumber();
                 $pay->total = $order->total;
+                $pay->is_type = $request->input('value');
+                if ($pay->save()) {
+                    $order = Orders::where('id', $id)->get();
+                    foreach ($order as $rs) {
+                        $rs->status = 3;
+                        if ($rs->save()) {
+                            $paygroup = new PayGroup();
+                            $paygroup->pay_id = $pay->id;
+                            $paygroup->order_id = $rs->id;
+                            $paygroup->save();
+                        }
+                    }
+                    $data = [
+                        'status' => true,
+                        'message' => 'ชำระเงินเรียบร้อยแล้ว',
+                    ];
+                }
+
+                $rider = RiderSend::where('order_id', $id)->first();
+                $rider->status = 1;
+                if ($rider->save()) {
+                    $data = [
+                        'status' => true,
+                        'message' => 'ชำระเงินเรียบร้อยแล้ว',
+                    ];
+                }
+            }
+        }
+        return response()->json($data);
+    }
+
+    public function Riderconfirm_is_pay(Request $request)
+    {
+        $data = [
+            'status' => false,
+            'message' => 'ชำระเงินไม่สำเร็จ',
+        ];
+        $id = $request->input('id');
+        if ($id) {
+            $order = Orders::find($id);
+            $order->status = 3;
+            if ($order->save()) {
+                $pay = new Pay();
+                $pay->payment_number = $this->generateRunningNumber();
+                $pay->total = $order->total;
+                $pay->is_type = $order->is_type;
                 if ($pay->save()) {
                     $order = Orders::where('id', $id)->get();
                     foreach ($order as $rs) {

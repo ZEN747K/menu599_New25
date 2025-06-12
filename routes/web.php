@@ -91,6 +91,7 @@ Route::middleware(['role:admin'])->group(function () {
     Route::post('/admin/order/listOrderDetailPay', [Admin::class, 'listOrderDetailPay'])->name('listOrderDetailPay');
     Route::post('/admin/order/generateQr', [Admin::class, 'generateQr'])->name('generateQr');
     Route::post('/admin/order/confirm_pay', [Admin::class, 'confirm_pay'])->name('confirm_pay');
+    Route::post('/admin/order/confirm_pay_rider', [Admin::class, 'confirm_pay_rider'])->name('confirm_pay_rider');
     Route::post('/admin/order/confirm_rider', [Admin::class, 'confirm_rider'])->name('confirm_rider');
     Route::get('/admin/order/printReceipt/{id}', [Admin::class, 'printReceipt'])->name('printReceipt');
     Route::get('/admin/order/printReceiptfull/{id}', [Admin::class, 'printReceiptfull'])->name('printReceiptfull');
@@ -137,6 +138,7 @@ Route::middleware(['role:admin'])->group(function () {
     Route::post('/admin/rider/delete', [Rider::class, 'riderDelete'])->name('riderDelete');
     Route::post('/admin/rider/save', [Rider::class, 'riderSave'])->name('riderSave');
     Route::post('/admin/order/Riderconfirm_pay', [Rider::class, 'Riderconfirm_pay'])->name('Riderconfirm_pay');
+    Route::post('/admin/order/Riderconfirm_is_pay', [Rider::class, 'Riderconfirm_is_pay'])->name('Riderconfirm_is_pay');
     //จัดการโต้ะและเพิ่ม Qr code
     Route::get('/admin/OrderRider', [Rider::class, 'OrderRider'])->name('OrderRider');
     Route::post('/admin/OrderRider/listData', [Rider::class, 'OrderRiderlistData'])->name('OrderRiderlistData');

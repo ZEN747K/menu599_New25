@@ -48,8 +48,9 @@
                             <thead>
                                 <tr>
                                     <th class="text-center">เลขที่ใบเสร็จ</th>
+                                    <th class="text-center">รูปแบบการชำระ</th>
                                     <th class="text-center">โต้ะ</th>
-                                    <th class="text-center">ยอดรวมทั้งหมด</th>
+                                    <th class="text-center">ยอดรวม</th>
                                     <th class="text-center">วันที่ชำระ</th>
                                     <th class="text-center">จัดการ</th>
                                 </tr>
@@ -116,8 +117,9 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-primary" id="confirm_pay">ยืนยันชำระเงิน</button>
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ปิด</button>
+                <button type="button" class="btn btn-sm btn-primary confirm_pay" data-id="0">ชำระเงินสด</button>
+                <button type="button" class="btn btn-sm btn-primary confirm_pay" data-id="1">ชำระโอนเงิน</button>
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">ปิด</button>
             </div>
         </div>
     </div>
@@ -273,7 +275,12 @@
             columns: [{
                     data: 'payment_number',
                     class: 'text-center',
-                    width: '20%'
+                    width: '15%'
+                },
+                {
+                    data: 'type',
+                    class: 'text-center',
+                    width: '15%'
                 },
                 {
                     data: 'table_id',
@@ -283,7 +290,7 @@
                 {
                     data: 'total',
                     class: 'text-center',
-                    width: '20%'
+                    width: '10%'
                 },
                 {
                     data: 'created',
@@ -370,14 +377,16 @@
         Swal.close();
     });
 
-    $('#confirm_pay').click(function(e) {
+    $('.confirm_pay').click(function(e) {
         e.preventDefault();
         var id = $('#table_id').val();
+        var value = $(this).data('id');
         $.ajax({
             url: "{{route('confirm_pay')}}",
             type: "post",
             data: {
-                id: id
+                id: id,
+                value: value
             },
             headers: {
                 'X-CSRF-TOKEN': '{{ csrf_token() }}'

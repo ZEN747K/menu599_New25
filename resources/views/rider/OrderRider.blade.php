@@ -181,14 +181,16 @@
     $('#modal-pay').on('hidden.bs.modal', function() {
         $('#order_id').val('');
     })
-    $(document).on('click', '#confirm_pay', function(e) {
+    $(document).on('click', '.confirm_pay', function(e) {
         e.preventDefault();
         var id = $('#order_id').val();
+        var value = $(this).data('id');
         $.ajax({
             url: "{{route('Riderconfirm_pay')}}",
             type: "post",
             data: {
-                id: id
+                id: id,
+                value: value
             },
             headers: {
                 'X-CSRF-TOKEN': '{{ csrf_token() }}'
@@ -202,6 +204,36 @@
                     Swal.fire(response.message, "", "error");
                 }
             }
+        });
+    });
+    $(document).on('click', '.confirm_order', function(e) {
+        var id = $(this).data('id');
+        Swal.fire({
+            title: "ท่านต้องการยืนยันการจัดส่งออเดอร์นี้ใช่หรือไม่?",
+            icon: "question",
+            showDenyButton: true,
+            confirmButtonText: "ยืนยัน",
+            denyButtonText: `ยกเลิก`
+        }).then((result) => {
+            $.ajax({
+                url: "{{route('Riderconfirm_is_pay')}}",
+                type: "post",
+                data: {
+                    id: id
+                },
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                success: function(response) {
+                    $('#modal-pay').modal('hide')
+                    if (response.status == true) {
+                        Swal.fire(response.message, "", "success");
+                        $('#myTable').DataTable().ajax.reload(null, false);
+                    } else {
+                        Swal.fire(response.message, "", "error");
+                    }
+                }
+            });
         });
     });
 </script>
@@ -243,8 +275,9 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-primary" id="confirm_pay">ยืนยันชำระเงิน</button>
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ปิด</button>
+                <button type="button" class="btn btn-sm btn-primary confirm_pay" data-id="0">ชำระเงินสด</button>
+                <button type="button" class="btn btn-sm btn-primary confirm_pay" data-id="1">ชำระโอนเงิน</button>
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">ปิด</button>
             </div>
         </div>
     </div>

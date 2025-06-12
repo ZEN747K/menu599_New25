@@ -227,6 +227,7 @@ class Admin extends Controller
             $pay->payment_number = $this->generateRunningNumber();
             $pay->table_id = $id;
             $pay->total = $total->total;
+            $pay->is_type = $request->input('value');
             if ($pay->save()) {
                 $order = Orders::where('table_id', $id)->whereIn('status', [1, 2])->get();
                 foreach ($order as $rs) {
@@ -238,6 +239,27 @@ class Admin extends Controller
                         $paygroup->save();
                     }
                 }
+                $data = [
+                    'status' => true,
+                    'message' => 'ชำระเงินเรียบร้อยแล้ว',
+                ];
+            }
+        }
+        return response()->json($data);
+    }
+
+    public function confirm_pay_rider(Request $request)
+    {
+        $data = [
+            'status' => false,
+            'message' => 'ชำระเงินไม่สำเร็จ',
+        ];
+        $id = $request->input('id');
+        if ($id) {
+            $order = Orders::find($id);
+            $order->is_pay = 1;
+            $order->is_type = $request->input('value');
+            if ($order->save()) {
                 $data = [
                     'status' => true,
                     'message' => 'ชำระเงินเรียบร้อยแล้ว',
@@ -338,6 +360,11 @@ class Admin extends Controller
         if (count($pay) > 0) {
             $info = [];
             foreach ($pay as $rs) {
+                if ($rs->is_type != 0) {
+                    $type = 'ชำระโอนเงิน';
+                } else {
+                    $type = 'ชำระเงินสด';
+                }
                 $action = '<a href="' . route('printReceipt', $rs->id) . '" target="_blank" type="button" class="btn btn-sm btn-outline-primary m-1">ออกใบเสร็จฉบับย่อ</a>
                 <button data-id="' . $rs->id . '" type="button" class="btn btn-sm btn-outline-primary modalTax m-1">ออกใบกำกับภาษี</button>
                 <button data-id="' . $rs->id . '" type="button" class="btn btn-sm btn-outline-primary modalShowPay m-1">รายละเอียด</button>';
@@ -345,6 +372,7 @@ class Admin extends Controller
                     'payment_number' => $rs->payment_number,
                     'table_id' => $rs->table_id,
                     'total' => $rs->total,
+                    'type' => $type,
                     'created' => $this->DateThai($rs->created_at),
                     'action' => $action
                 ];
@@ -370,12 +398,17 @@ class Admin extends Controller
         if (count($pay) > 0) {
             $info = [];
             foreach ($pay as $rs) {
+                if ($rs->is_type != 0) {
+                    $type = 'ชำระโอนเงิน';
+                } else {
+                    $type = 'ชำระเงินสด';
+                }
                 $action = '<a href="' . route('printReceipt', $rs->id) . '" target="_blank" type="button" class="btn btn-sm btn-outline-primary m-1">ออกใบเสร็จฉบับย่อ</a>
                 <button data-id="' . $rs->id . '" type="button" class="btn btn-sm btn-outline-primary modalTax m-1">ออกใบกำกับภาษี</button>
                 <button data-id="' . $rs->id . '" type="button" class="btn btn-sm btn-outline-primary modalShowPay m-1">รายละเอียด</button>';
                 $info[] = [
                     'payment_number' => $rs->payment_number,
-                    'table_id' => $rs->table_id,
+                    'type' => $type,
                     'total' => $rs->total,
                     'created' => $this->DateThai($rs->created_at),
                     'action' => $action
@@ -493,6 +526,7 @@ class Admin extends Controller
             ->whereNot('users_id')
             ->whereNot('address_id')
             ->orderBy('created_at', 'desc')
+            ->whereIn('status', [1, 2])
             ->get();
 
         if (count($order) > 0) {
@@ -510,8 +544,14 @@ class Admin extends Controller
                     $status = '<button class="btn btn-sm btn-success">ชำระเงินเรียบร้อยแล้ว</button>';
                 }
 
+                if ($rs->is_pay == 0) {
+                    $pay .= '<button data-id="' . $rs->id . '" data-total="' . $rs->total . '" type="button" class="btn btn-sm btn-outline-success modalPay m-1">ชำระเงิน</button>';
+                }
                 if ($rs->status == 1) {
-                    $pay = '<button data-id="' . $rs->id . '" data-total="' . $rs->total . '" type="button" class="btn btn-sm btn-outline-warning modalRider">จัดส่ง</button>';
+                    $pay .= '<button data-id="' . $rs->id . '" data-total="' . $rs->total . '" type="button" class="btn btn-sm btn-outline-warning modalRider">จัดส่ง</button>';
+                }
+                if ($rs->is_pay == 1) {
+                    $status .= '<button class="btn btn-sm btn-success m-1">ชำระเงินแล้ว</button>';
                 }
                 $flag_order = '<button class="btn btn-sm btn-warning">สั่งออนไลน์</button>';
                 $action = '<button data-id="' . $rs->id . '" type="button" class="btn btn-sm btn-outline-primary modalShow m-1">รายละเอียด</button>' . $pay;
