@@ -6,6 +6,31 @@
     svg {
         width: 100%;
     }
+    
+    /* CSS สำหรับ Modal Preview */
+    #preview-frame {
+        width: 100%;
+        height: 500px;
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        background-color: #f8f9fa;
+    }
+
+    .modal-lg {
+        max-width: 900px;
+    }
+
+    #modal-preview .modal-body {
+        padding: 0;
+    }
+
+    #modal-preview .modal-header {
+        border-bottom: 1px solid #dee2e6;
+    }
+
+    #modal-preview .modal-footer {
+        border-top: 1px solid #dee2e6;
+    }
 </style>
 @endsection
 @section('content')
@@ -71,6 +96,8 @@
         </div>
     </div>
 </div>
+
+<!-- Modal รายละเอียดออเดอร์  -->
 <div class="modal fade" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true" id="modal-detail">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -86,6 +113,8 @@
         </div>
     </div>
 </div>
+
+<!-- Modal รายละเอียดออเดอร์ที่ชำระแล้ว -->
 <div class="modal fade" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true" id="modal-detail-pay">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -101,6 +130,8 @@
         </div>
     </div>
 </div>
+
+<!-- Modal ชำระเงิน -->
 <div class="modal fade" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true" id="modal-pay">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -131,6 +162,8 @@
         </div>
     </div>
 </div>
+
+<!-- Modal เลือกไรเดอร์ -->
 <div class="modal fade" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true" id="modal-rider">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -161,6 +194,8 @@
         </div>
     </div>
 </div>
+
+<!-- Modal ออกใบกำกับภาษี -->
 <div class="modal fade" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true" id="modal-tax-full">
     <div class="modal-dialog modal-md">
         <div class="modal-content">
@@ -200,13 +235,38 @@
         </div>
     </div>
 </div>
+
+<!-- Modal พรีวิวใบเสร็จ -->
+<div class="modal fade" tabindex="-1" aria-labelledby="previewLabel" aria-hidden="true" id="modal-preview"> 
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">พรีวิวใบเสร็จ</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <iframe src="" id="preview-frame" style="width:100%;height:500px;border:0;"></iframe>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="confirm-print">ปริ้นใบเสร็จ</button>
+                <button type="button" class="btn btn-warning" id="print-browser">ปริ้นแบบธรรมดา</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ปิด</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @endsection
+
 @section('script')
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script src="https://cdn.datatables.net/2.2.2/js/dataTables.js"></script>
+
 <script>
     var language = '{{asset("assets/js/datatable-language.js")}}';
+    
     $(document).ready(function() {
+        // DataTable สำหรับรายการออเดอร์
         $("#myTable").DataTable({
             language: {
                 url: language,
@@ -223,7 +283,6 @@
                     'X-CSRF-TOKEN': '{{ csrf_token() }}'
                 },
             },
-
             columns: [{
                     data: 'flag_order',
                     class: 'text-center',
@@ -262,6 +321,8 @@
                 },
             ]
         });
+
+        // DataTable สำหรับรายการชำระเงินแล้ว
         $("#myTable2").DataTable({
             language: {
                 url: language,
@@ -278,7 +339,6 @@
                     'X-CSRF-TOKEN': '{{ csrf_token() }}'
                 },
             },
-
             columns: [{
                     data: 'payment_number',
                     class: 'text-center',
@@ -313,8 +373,17 @@
             ]
         });
     });
-</script>
-<script>
+
+    // ฟังก์ชันตรวจสอบว่ามาจาก mobile app หรือไม่
+    function isMobileApp() {
+        // ตรวจสอบจาก HTTP headers ที่ส่งมาใน meta tag
+        const channel = document.querySelector('meta[name="app-channel"]')?.getAttribute('content');
+        const device = document.querySelector('meta[name="app-device"]')?.getAttribute('content');
+        
+        return channel === 'pos-app' && (device === 'android' || device === 'ios');
+    }
+
+    // รายละเอียดออเดอร์
     $(document).on('click', '.modalShow', function(e) {
         e.preventDefault();
         var id = $(this).data('id');
@@ -334,6 +403,7 @@
         });
     });
 
+    // รายละเอียดออเดอร์ที่ชำระแล้ว
     $(document).on('click', '.modalShowPay', function(e) {
         e.preventDefault();
         var id = $(this).data('id');
@@ -353,6 +423,66 @@
         });
     });
 
+    // พรีวิวใบเสร็จ
+    $(document).on('click', '.preview-short', function(e) {
+        e.preventDefault();
+        var id = $(this).data('id');
+        console.log('Preview button clicked, ID:', id);
+        
+        // แสดง loading
+        Swal.showLoading();
+        
+        // สร้าง URL สำหรับ preview
+        var previewUrl = '{{ route("printReceipt", ":id") }}'.replace(':id', id);
+        console.log('Preview URL:', previewUrl);
+        
+        // โหลด preview ใน iframe
+        $('#preview-frame').attr('src', previewUrl);
+        
+        // เก็บ ID สำหรับใช้ในการ print
+        $('#modal-preview').data('receipt-id', id);
+        
+        // ซ่อน loading และแสดง modal
+        Swal.close();
+        $('#modal-preview').modal('show');
+    });
+
+    // ปริ้นใบเสร็จ (รองรับ JSBridge)
+    $(document).on('click', '#confirm-print', function(e) {
+        e.preventDefault();
+        var id = $('#modal-preview').data('receipt-id');
+        
+        if (id) {
+            // สร้าง URL พร้อม parameters
+            var printUrl = '{{ route("printReceipt", ":id") }}'.replace(':id', id);
+            
+            // เพิ่ม parameters ถ้ามาจาก mobile app
+            if (isMobileApp()) {
+                const channel = document.querySelector('meta[name="app-channel"]')?.getAttribute('content');
+                const device = document.querySelector('meta[name="app-device"]')?.getAttribute('content');
+                printUrl += `?channel=${channel}&device=${device}`;
+            }
+            
+            // เปิดหน้าต่างใหม่เพื่อ print
+            var printWindow = window.open(printUrl, '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
+            
+            // รอให้หน้าโหลดเสร็จแล้วปิด modal
+            if (printWindow) {
+                $('#modal-preview').modal('hide');
+            }
+        }
+    });
+
+    // ปริ้นแบบธรรมดา (ไม่เปลี่ยนแปลง)
+    $(document).on('click', '#print-browser', function(e) {
+        e.preventDefault();
+        var frame = document.getElementById('preview-frame');
+        if (frame && frame.contentWindow) {
+            frame.contentWindow.print();
+        }
+    });
+
+    // ชำระเงิน
     $(document).on('click', '.modalPay', function(e) {
         var total = $(this).data('total');
         var id = $(this).data('id');
@@ -375,6 +505,8 @@
             }
         });
     });
+
+    // เลือกไรเดอร์
     $(document).on('click', '.modalRider', function(e) {
         var total = $(this).data('total');
         var id = $(this).data('id');
@@ -384,6 +516,7 @@
         Swal.close();
     });
 
+    // ยืนยันการชำระเงิน
     $('.confirm_pay').click(function(e) {
         e.preventDefault();
         var id = $('#table_id').val();
@@ -411,6 +544,7 @@
         });
     });
 
+    // ยืนยันการจัดส่งไรเดอร์
     $('#confirm_rider').click(function(e) {
         e.preventDefault();
         var id = $('#order_id_rider').val();
@@ -437,12 +571,14 @@
         });
     });
 
+    // ออกใบกำกับภาษี
     $(document).on('click', '.modalTax', function(e) {
         var id = $(this).data('id');
         $('#modal-tax-full').modal('show');
         $('#pay_id').val(id);
     });
 
+    // ล้างข้อมูล modal เมื่อปิด
     $('#modal-tax-full').on('hidden.bs.modal', function() {
         $('#pay_id').val('');
         $('input').val('');
@@ -453,6 +589,7 @@
         $('#table_id').val('');
     })
 
+    // ส่งข้อมูลใบกำกับภาษี
     $(document).on('submit', '#tax-full', function(e) {
         e.preventDefault();
         var pay_id = $('#pay_id').val();
@@ -463,6 +600,7 @@
         window.open('<?= url('admin/order/printReceiptfull') ?>/' + pay_id + '?name=' + name + '&tel=' + tel + '&tax_id=' + tax_id + '&address=' + address, '_blank');
     });
 
+    // ยกเลิกออเดอร์
     $(document).on('click', '.cancelOrderSwal', function(e) {
         var id = $(this).data('id');
         $('#modal-detail').modal('hide');
@@ -497,6 +635,7 @@
         });
     });
 
+    // ยกเลิกเมนู
     $(document).on('click', '.cancelMenuSwal', function(e) {
         var id = $(this).data('id');
         $('#modal-detail').modal('hide');
@@ -531,6 +670,7 @@
         });
     });
 
+    // อัพเดทสถานะ
     $(document).on('click', '.update-status', function(e) {
         var id = $(this).data('id');
         $('#modal-detail').modal('hide');
@@ -565,6 +705,8 @@
             }
         });
     });
+
+    // อัพเดทสถานะออเดอร์
     $(document).on('click', '.updatestatusOrder', function(e) {
         var id = $(this).data('id');
         $('#modal-detail').modal('hide');
@@ -599,5 +741,6 @@
             }
         });
     });
+
 </script>
 @endsection

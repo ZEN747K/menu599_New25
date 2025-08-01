@@ -553,37 +553,46 @@ class Admin extends Controller
     }
 
     public function printReceipt($id)
-    {
-        $config = Config::first();
-        $pay = Pay::find($id);
-        $paygroup = PayGroup::where('pay_id', $id)->get();
-        $order_id = array();
-        foreach ($paygroup as $rs) {
-            $order_id[] = $rs->order_id;
-        }
-        $item_id = '';
-        if (empty($pay->table_id)) {
-            $item_id = $order_id[0];
-        }
-        $order = OrdersDetails::whereIn('order_id', $order_id)
-            ->with('menu', 'option.option')
-            ->get();
+{
+    $config = Config::first();
+    $pay = Pay::with('user')->find($id);
+    $paygroup = PayGroup::where('pay_id', $id)->get();
+    $order_id = array();
+    
+    foreach ($paygroup as $rs) {
+        $order_id[] = $rs->order_id;
+    }
+    
+    $item_id = '';
+    if (empty($pay->table_id)) {
+        $item_id = $order_id[0];
+    }
+    
+    $order = OrdersDetails::whereIn('order_id', $order_id)
+        ->with('menu', 'option.option')
+        ->get();
+        
+    $users = null;
+    if ($item_id) {
         $users = Orders::select('users.*', 'users_addresses.name as address_name', 'users_addresses.tel as address_tel')
             ->join('users', 'orders.users_id', '=', 'users.id')
-            ->join('users_addresses', 'users.id', '=', 'users_addresses.users_id')
-            ->where('users_addresses.is_use', 1)
+            ->leftJoin('users_addresses', function($join) {
+                $join->on('users.id', '=', 'users_addresses.users_id')
+                     ->where('users_addresses.is_use', 1);
+            })
             ->find($item_id);
-
-        $data = [
-            'config' => $config,
-            'pay' => $pay,
-            'order' => $order,
-            'users' => $users,
-            'type' => 'normal'
-        ];
-        return view('print_web', ['jsonData' => json_encode($data)]);
     }
 
+    $data = [
+        'config' => $config,
+        'pay' => $pay,
+        'order' => $order,
+        'users' => $users,
+        'type' => 'normal'
+    ];
+    
+    return view('print_web', ['jsonData' => json_encode($data)]);
+}
     public function printReceiptfull($id)
     {
         $get = $_GET;

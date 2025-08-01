@@ -7,8 +7,8 @@
     <style>
         @media print {
             @page {
-                size: 80mm auto;
-                margin: 0;
+                size: A4;
+                margin: 1cm;
             }
             body {
                 margin: 0;
@@ -18,9 +18,10 @@
                 line-height: 1.4;
             }
             .print-wrapper {
-                width: 80mm;
-                margin: 0 auto;
-                padding: 5mm;
+                width: 100%;
+                max-width: none;
+                margin: 0;
+                padding: 0;
             }
             .no-print {
                 display: none !important;
@@ -37,9 +38,10 @@
         }
         
         .print-wrapper {
-            width: 80mm;
+            width: 100%;
+            max-width: 600px;
             margin: 0 auto;
-            padding: 5mm;
+            padding: 20px;
             background-color: white;
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
         }
@@ -128,9 +130,105 @@
             font-size: 12px;
         }
         
-        /* สำหรับใบเสร็จ */
-        .receipt-section {
-            margin: 10px 0;
+        /* ใบเสร็จแบบตาราง */
+        .receipt-header {
+            text-align: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #000;
+            padding-bottom: 15px;
+        }
+        
+        .receipt-header h2 {
+            margin: 0 0 10px 0;
+            font-size: 20px;
+            font-weight: bold;
+        }
+        
+        .receipt-info {
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        
+        .receipt-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            border: 1px solid #000;
+        }
+        
+        .receipt-table th,
+        .receipt-table td {
+            border: 1px solid #000;
+            padding: 8px;
+            text-align: left;
+        }
+        
+        .receipt-table th {
+            background-color: #f5f5f5;
+            font-weight: bold;
+            text-align: center;
+        }
+        
+        .item-header {
+            width: 50%;
+        }
+        
+        .qty-header {
+            width: 20%;
+            text-align: center;
+        }
+        
+        .price-header {
+            width: 30%;
+            text-align: center;
+        }
+        
+        .item-col {
+            vertical-align: top;
+        }
+        
+        .menu-name {
+            font-weight: bold;
+            margin-bottom: 3px;
+        }
+        
+        .menu-option {
+            font-size: 12px;
+            color: #666;
+            margin: 2px 0;
+        }
+        
+        .menu-remark {
+            font-size: 12px;
+            color: #666;
+            font-style: italic;
+            margin-top: 3px;
+        }
+        
+        .qty-col {
+            text-align: center;
+            vertical-align: top;
+            font-weight: bold;
+        }
+        
+        .price-col {
+            text-align: right;
+            vertical-align: top;
+            font-weight: bold;
+        }
+        
+        .receipt-total {
+            border: 1px solid #000;
+            border-top: 2px solid #000;
+            background-color: #f5f5f5;
+            padding: 10px;
+            margin-top: 10px;
+        }
+        
+        .total-line {
+            text-align: right;
+            font-size: 16px;
+            font-weight: bold;
         }
         
         /* สำหรับออเดอร์ในครัว */
@@ -183,22 +281,102 @@
             font-weight: bold;
             font-size: 18px;
         }
+
+        /* สำหรับแสดงผลใน iframe */
+        .preview-mode {
+            background-color: #f8f9fa !important;
+            padding: 20px;
+        }
+
+        .preview-mode .print-wrapper {
+            margin: 0 auto;
+            background-color: white;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            padding: 20px;
+            max-width: 600px;
+        }
+
+        .preview-mode .no-print {
+            display: block !important;
+            padding: 15px;
+            background-color: #e9ecef;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .preview-mode .no-print button {
+            margin: 0 5px;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .preview-mode .no-print button:first-child {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .preview-mode .no-print button:last-child {
+            background-color: #6c757d;
+            color: white;
+        }
     </style>
 </head>
 <body>
     <div class="no-print">
-        <button onclick="window.print()" style="padding: 10px 20px; font-size: 14px;">พิมพ์</button>
+        <button onclick="handlePrint()" style="padding: 10px 20px; font-size: 14px;">พิมพ์</button>
         <button onclick="window.close()" style="padding: 10px 20px; font-size: 14px; margin-left: 10px;">ปิด</button>
     </div>
 
     <div class="print-wrapper">
         <div id="print-content">
+            <!-- เนื้อหาจะถูกสร้างโดย JavaScript -->
         </div>
     </div>
 
     <script>
         const jsonData = {!! $jsonData !!};
         const data = jsonData;
+        
+        // ตรวจสอบว่าอยู่ใน iframe หรือไม่
+        const isInIframe = window.self !== window.top;
+        
+        // ตรวจสอบว่ามาจาก mobile app หรือไม่
+        function isMobileApp() {
+            // ตรวจสอบจาก user agent หรือ URL parameters ที่ส่งมา
+            const urlParams = new URLSearchParams(window.location.search);
+            const channel = urlParams.get('channel');
+            const device = urlParams.get('device');
+            
+            return channel === 'pos-app' && (device === 'android' || device === 'ios');
+        }
+        
+        // ฟังก์ชันสำหรับ print ผ่าน jsbridge
+        function printViaJSBridge(data) {
+            const printData = {
+                type: 'print_receipt',
+                data: data
+            };
+            
+            // ส่งข้อมูลไปยัง mobile app ผ่าน jsbridge
+            if (window.Android && window.Android.printReceipt) {
+                // Android
+                window.Android.printReceipt(JSON.stringify(printData));
+            } else if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.printReceipt) {
+                // iOS
+                window.webkit.messageHandlers.printReceipt.postMessage(printData);
+            } else {
+                // Fallback - ถ้าไม่มี jsbridge ให้ใช้ window.print
+                console.warn('JSBridge not available, falling back to window.print');
+                window.print();
+            }
+        }
+        
+        if (isInIframe) {
+            document.body.classList.add('preview-mode');
+        }
         
         function formatPrice(price) {
             return parseFloat(price).toFixed(2);
@@ -244,18 +422,20 @@
             const container = document.getElementById('print-content');
             let html = '';
             
+            console.log('Data type:', data.type);
+            console.log('Data:', data);
+            
             if (data.type === 'normal') {
-                // ใบเสร็จธรรมดา
                 html = renderNormalReceipt();
             } else if (data.type === 'taxfull') {
-                // ใบกำกับภาษี
                 html = renderTaxReceipt();
             } else if (data.type === 'order_admin') {
-                // ปริ้นออเดอร์สำหรับแอดมิน
                 html = renderOrderAdmin();
             } else if (data.type === 'order_cook') {
-                // ปริ้นออเดอร์สำหรับครัว
                 html = renderOrderCook();
+            } else {
+                // Default เป็น normal receipt
+                html = renderNormalReceipt();
             }
             
             container.innerHTML = html;
@@ -263,18 +443,23 @@
         
         function renderNormalReceipt() {
             let html = `
-                <div class="header">
-                    <div class="shop-name">${data.config.name || 'ร้านอาหาร'}</div>
-                    <div>ใบเสร็จรับเงิน</div>
+                <div class="receipt-header">
+                    <h2>${data.config.name || 'ร้านค้าออนไลน์'}</h2>
+                    <div class="receipt-info">
+                        <div>เลขที่ในเสร็จ #${data.pay.payment_number}</div>
+                        <div>วันที่: ${formatDateTime(data.pay.created_at)}</div>
+                    </div>
                 </div>
                 
-                <div class="order-info">
-                    <div>เลขที่: ${data.pay.payment_number}</div>
-                    <div>โต๊ะ: ${data.pay.table_id || '-'}</div>
-                    <div>วันที่: ${formatDateTime(data.pay.created_at)}</div>
-                </div>
-                
-                <div class="receipt-section">
+                <table class="receipt-table">
+                    <thead>
+                        <tr>
+                            <th class="item-header">เมนู</th>
+                            <th class="qty-header">จำนวน</th>
+                            <th class="price-header">ราคา</th>
+                        </tr>
+                    </thead>
+                    <tbody>
             `;
             
             let total = 0;
@@ -285,42 +470,40 @@
                     total += itemTotal;
                     
                     html += `
-                        <div class="order-item">
-                            <div class="item-name">${item.menu ? item.menu.name : 'เมนู'}</div>
+                        <tr>
+                            <td class="item-col">
+                                <div class="menu-name">${item.menu ? item.menu.name : 'เมนู'}</div>
                     `;
                     
                     if (item.option && item.option.length > 0) {
                         item.option.forEach(opt => {
                             if (opt.option) {
-                                html += `<div class="item-option">+ ${opt.option.type}</div>`;
+                                html += `<div class="menu-option">+ ${opt.option.type}</div>`;
                             }
                         });
                     }
                     
                     if (item.remark) {
-                        html += `<div class="item-remark">หมายเหตุ: ${item.remark}</div>`;
+                        html += `<div class="menu-remark">หมายเหตุ: ${item.remark}</div>`;
                     }
                     
                     html += `
-                            <div class="quantity-price">
-                                ${item.quantity} x ${formatPrice(item.price)} = ${formatPrice(itemTotal)}฿
-                            </div>
-                        </div>
+                            </td>
+                            <td class="qty-col">${item.quantity}</td>
+                            <td class="price-col">${formatPrice(itemTotal)} ฿</td>
+                        </tr>
                     `;
                 });
             }
             
             html += `
-                </div>
+                    </tbody>
+                </table>
                 
-                <div class="total-section">
-                    <div class="total-line main-total">
-                        รวมทั้งสิ้น: ${formatPrice(data.pay.total)}฿
+                <div class="receipt-total">
+                    <div class="total-line">
+                        <strong>Total: ${formatPrice(data.pay.total)} ฿</strong>
                     </div>
-                </div>
-                
-                <div class="footer">
-                    <div>ขอบคุณที่ใช้บริการ</div>
                 </div>
             `;
             
@@ -479,74 +662,90 @@
             let html = `
                 <div class="header">
                     <div class="shop-name">${data.config.name || 'ร้านค้าออนไลน์'}</div>
+                    <div style="background-color: #ffeb3b; padding: 5px; margin: 10px 0; border-radius: 3px;">
+                        <strong>สำหรับครัว - ออเดอร์ในร้าน</strong>
+                    </div>
                     <div>เลขที่โต๊ะ: #${data.table ? data.table.table_number : data.table_id}</div>
                     <div>วันที่: ${formatDateTime(new Date())}</div>
                 </div>
                 
-                <table class="order-table">
-                    <tbody>
+                <div style="margin: 15px 0; font-size: 16px; font-weight: bold; text-align: center; border: 2px solid #000; padding: 10px;">
+                    รายการอาหารที่ต้องทำ
+                </div>
             `;
             
             if (data.order_details && data.order_details.length > 0) {
                 const groupedItems = groupOrderItems(data.order_details);
-                groupedItems.forEach(item => {
+                groupedItems.forEach((item, index) => {
                     html += `
-                        <tr>
-                            <td class="item-col">
-                                <div style="font-weight: bold;">${item.menu ? item.menu.name : 'เมนู'}</div>
+                        <div class="order-item" style="border: 1px solid #ddd; margin: 10px 0; padding: 10px; background-color: #f9f9f9;">
+                            <div style="font-size: 18px; font-weight: bold; text-align: center; margin-bottom: 5px;">
+                                ${index + 1}. ${item.menu ? item.menu.name : 'เมนู'}
+                            </div>
+                            <div style="text-align: center; font-size: 20px; font-weight: bold; color: #e91e63; margin: 5px 0;">
+                                จำนวน: ${item.quantity} ${item.quantity > 1 ? 'จาน' : 'จาน'}
+                            </div>
                     `;
                     
                     if (item.option && item.option.length > 0) {
+                        html += `<div style="margin: 5px 0; font-weight: bold;">ตัวเลือก:</div>`;
                         item.option.forEach(opt => {
                             if (opt.option) {
-                                html += `<div style="font-size: 14px; color: #666;">+ ${opt.option.type}</div>`;
+                                html += `<div style="font-size: 16px; color: #666; margin: 2px 0; text-align: center;">• ${opt.option.type}</div>`;
                             }
                         });
                     }
                     
                     if (item.remark) {
-                        html += `<div style="font-size: 14px; color: #666;">หมายเหตุ: ${item.remark}</div>`;
+                        html += `
+                            <div style="margin: 10px 0; padding: 5px; background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 3px;">
+                                <strong>หมายเหตุ:</strong> ${item.remark}
+                            </div>
+                        `;
                     }
                     
-                    html += `
-                            </td>
-                            <td class="qty-col">${item.quantity}</td>
-                            <td class="price-col">${formatPrice(item.price)}฿</td>
-                        </tr>
-                    `;
+                    html += `</div>`;
                 });
             }
             
-            // คำนวณราคารวม
-            let total = 0;
-            if (data.order_details && data.order_details.length > 0) {
-                const groupedItems = groupOrderItems(data.order_details);
-                total = groupedItems.reduce((sum, item) => {
-                    return sum + (parseFloat(item.price) * parseInt(item.quantity));
-                }, 0);
-            }
-            
             html += `
-                        <tr class="total-row">
-                            <td colspan="3">Total: ${formatPrice(total)}฿</td>
-                        </tr>
-                    </tbody>
-                </table>
+                <div style="margin-top: 20px; text-align: center; font-size: 14px; color: #666;">
+                    --- สิ้นสุดรายการ ---
+                </div>
             `;
             
             return html;
         }
         
+        // ฟังก์ชันจัดการการพิมพ์
+        function handlePrint() {
+            if (isMobileApp()) {
+                console.log('Mobile app detected, using JSBridge');
+                printViaJSBridge(data);
+            } else {
+                console.log('Web browser detected, using window.print');
+                window.print();
+            }
+        }
+        
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM loaded, rendering content...');
             renderContent();
             
-            if (data.type === 'order_admin' || data.type === 'order_cook') {
+            // Auto print เฉพาะกรณีที่ไม่ได้อยู่ใน iframe และเป็น order type
+            if (!isInIframe && (data.type === 'order_admin' || data.type === 'order_cook')) {
                 console.log('Auto print triggered for type:', data.type);
                 setTimeout(function() {
-                    console.log('Calling window.print()');
-                    window.print();
+                    console.log('Calling handlePrint()');
+                    handlePrint();
                 }, 1000);
             }
+        });
+        
+        // เพิ่ม error handling
+        window.addEventListener('error', function(e) {
+            console.error('JavaScript Error:', e.error);
+            document.getElementById('print-content').innerHTML = '<div style="text-align: center; color: red; padding: 20px;">เกิดข้อผิดพลาดในการโหลดข้อมูล<br>กรุณาลองใหม่อีกครั้ง</div>';
         });
     </script>
 </body>

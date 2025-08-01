@@ -85,6 +85,10 @@ Route::middleware('checkLogin')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
+Route::middleware(['role:admin'])->group(function () {
+    Route::get('/admin/order/printReceipt/{id}', [Admin::class, 'printReceipt'])->name('printReceipt');
+    Route::get('/admin/order/printReceiptfull/{id}', [Admin::class, 'printReceiptfull'])->name('printReceiptfull');
+});
 
 Route::middleware(['role:admin'])->group(function () {
     Route::get('/admin', [Admin::class, 'dashboard'])->name('dashboard');
