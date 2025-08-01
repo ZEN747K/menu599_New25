@@ -16,6 +16,9 @@ use App\Http\Controllers\Delivery;
 use App\Http\Controllers\Main;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\admin\CategoriesMember;
+use App\Http\Controllers\admin\Member;
+use App\Http\Controllers\admin\Memberorder;
 
 /*
 |--------------------------------------------------------------------------
@@ -202,7 +205,15 @@ Route::middleware(['role:admin'])->group(function () {
     //export
     Route::get('/export-report', [exportExcel::class, 'exportExcel'])->name('exportExcel');
     Route::get('/export-report-rider', [exportExcel::class, 'exportExcelRider'])->name('exportExcelRider');
+     //ปริ้นออเดอร์
+    Route::get('/admin/order/printOrderAdmin/{id}', [Memberorder::class, 'printOrderAdmin'])->name('printOrderAdmin');
+    Route::get('/admin/order/printOrderAdminCook/{id}', [Memberorder::class, 'printOrderAdminCook'])->name('printOrderAdminCook');
+    Route::get('/admin/order/printOrder/{id}', [Memberorder::class, 'printOrder'])->name('printOrder');
+    Route::get('/admin/order/printOrderRider/{id}', [Memberorder::class, 'printOrderRider'])->name('printOrderRider');
+    Route::get('/admin/order/printOrderAdmin/{id}', [Admin::class, 'printOrderAdmin'])->name('printOrderAdmin');
+    Route::get('/admin/order/printOrderAdminCook/{id}', [Admin::class, 'printOrderAdminCook'])->name('printOrderAdminCook');
 });
+
 
 
 require __DIR__ . '/auth.php';
