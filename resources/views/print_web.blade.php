@@ -446,7 +446,7 @@
                 <div class="receipt-header">
                     <h2>${data.config.name || 'ร้านค้าออนไลน์'}</h2>
                     <div class="receipt-info">
-                        <div>เลขที่ในเสร็จ #${data.pay.payment_number}</div>
+                        <div>เลขที่ใบเสร็จ #${data.pay.payment_number}</div>
                         <div>วันที่: ${formatDateTime(data.pay.created_at)}</div>
                     </div>
                 </div>
