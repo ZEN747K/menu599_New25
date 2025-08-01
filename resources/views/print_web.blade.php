@@ -69,24 +69,25 @@
         }
         
         .order-item {
-            margin-bottom: 8px;
-            padding: 2px 0;
+            margin-bottom: 10px;
+            padding: 3px 0;
         }
         
         .item-name {
             font-weight: bold;
             text-align: center;
+            font-size: 16px;
         }
         
         .item-option {
-            font-size: 12px;
+            font-size: 14px;
             margin-left: 10px;
             color: #666;
             text-align: center;
         }
         
         .item-remark {
-            font-size: 12px;
+            font-size: 14px;
             margin-left: 10px;
             color: #666;
             font-style: italic;
@@ -95,8 +96,9 @@
         
         .quantity-price {
             text-align: center;
-            margin-top: 2px;
+            margin-top: 3px;
             white-space: nowrap;
+            font-size: 15px;
         }
         
         .total-section {
@@ -146,6 +148,7 @@
             padding: 20px;
         }
         
+        /* สำหรับตารางในออเดอร์ */
         .order-table {
             width: 100%;
             margin: 10px 0;
@@ -242,12 +245,16 @@
             let html = '';
             
             if (data.type === 'normal') {
+                // ใบเสร็จธรรมดา
                 html = renderNormalReceipt();
             } else if (data.type === 'taxfull') {
+                // ใบกำกับภาษี
                 html = renderTaxReceipt();
             } else if (data.type === 'order_admin') {
+                // ปริ้นออเดอร์สำหรับแอดมิน
                 html = renderOrderAdmin();
             } else if (data.type === 'order_cook') {
+                // ปริ้นออเดอร์สำหรับครัว
                 html = renderOrderCook();
             }
             
@@ -430,13 +437,13 @@
                     if (item.option && item.option.length > 0) {
                         item.option.forEach(opt => {
                             if (opt.option) {
-                                html += `<div style="font-size: 10px; color: #666;">+ ${opt.option.type}</div>`;
+                                html += `<div style="font-size: 14px; color: #666;">+ ${opt.option.type}</div>`;
                             }
                         });
                     }
                     
                     if (item.remark) {
-                        html += `<div style="font-size: 10px; color: #666;">หมายเหตุ: ${item.remark}</div>`;
+                        html += `<div style="font-size: 14px; color: #666;">หมายเหตุ: ${item.remark}</div>`;
                     }
                     
                     html += `
@@ -481,7 +488,8 @@
             `;
             
             if (data.order_details && data.order_details.length > 0) {
-                data.order_details.forEach(item => {
+                const groupedItems = groupOrderItems(data.order_details);
+                groupedItems.forEach(item => {
                     html += `
                         <tr>
                             <td class="item-col">
@@ -491,13 +499,13 @@
                     if (item.option && item.option.length > 0) {
                         item.option.forEach(opt => {
                             if (opt.option) {
-                                html += `<div style="font-size: 10px; color: #666;">+ ${opt.option.type}</div>`;
+                                html += `<div style="font-size: 14px; color: #666;">+ ${opt.option.type}</div>`;
                             }
                         });
                     }
                     
                     if (item.remark) {
-                        html += `<div style="font-size: 10px; color: #666;">หมายเหตุ: ${item.remark}</div>`;
+                        html += `<div style="font-size: 14px; color: #666;">หมายเหตุ: ${item.remark}</div>`;
                     }
                     
                     html += `
@@ -509,10 +517,11 @@
                 });
             }
             
-            
+            // คำนวณราคารวม
             let total = 0;
             if (data.order_details && data.order_details.length > 0) {
-                total = data.order_details.reduce((sum, item) => {
+                const groupedItems = groupOrderItems(data.order_details);
+                total = groupedItems.reduce((sum, item) => {
                     return sum + (parseFloat(item.price) * parseInt(item.quantity));
                 }, 0);
             }
