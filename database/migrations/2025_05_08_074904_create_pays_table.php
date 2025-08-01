@@ -11,18 +11,20 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('pays', function (Blueprint $table) {
-            $table->id();
-            $table->text('payment_number')->nullable();
-            $table->integer('table_id')->nullable();
-            $table->unsignedBigInteger('user_id')->nullable(); 
-            $table->decimal('total', 10, 2)->nullable()->change(); 
-            $table->tinyInteger('is_type')->default(0); 
-            $table->timestamps();
+        Schema::table('pays', function (Blueprint $table) {
+            if (!Schema::hasColumn('pays', 'user_id')) {
+                $table->unsignedBigInteger('user_id')->nullable()->after('table_id');
+            }
             
+            if (!Schema::hasColumn('pays', 'is_type')) {
+                $table->tinyInteger('is_type')->default(0)->after('total');
+            }
             
-            $table->foreign('user_id')->references('id')->on('users')->onDelete('set null');
-            $table->foreign('table_id')->references('id')->on('tables')->onDelete('set null');
+            $table->decimal('total', 10, 2)->nullable()->change();
+            
+            if (!Schema::hasColumn('pays', 'user_id')) {
+                $table->foreign('user_id')->references('id')->on('users')->onDelete('set null');
+            }
         });
     }
 
@@ -31,6 +33,17 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('pays');
+        Schema::table('pays', function (Blueprint $table) {
+            if (Schema::hasColumn('pays', 'user_id')) {
+                $table->dropForeign(['user_id']);
+                $table->dropColumn('user_id');
+            }
+            
+            if (Schema::hasColumn('pays', 'is_type')) {
+                $table->dropColumn('is_type');
+            }
+            
+            $table->text('total')->nullable()->change();
+        });
     }
 };
