@@ -444,83 +444,85 @@ class Admin extends Controller
 
         $info = [];
 
-        // รายการจาก Pay table
-        foreach ($payList as $pay) {
-            $paymentType = $pay->is_type == 0 ? 'เงินสด' : 'โอนเงิน';
-            $paymentClass = 'badge bg-success';
+    // ในฟังก์ชัน ListOrderPay() แก้ไขส่วน action buttons
 
-            $action = '';
-            $action .= '<button type="button" data-id="' . $pay->id . '" data-type="pay" class="btn btn-sm btn-outline-info modalShowPay me-1">
-                   พรีวิวเสร็จ
+// รายการจาก Pay table
+foreach ($payList as $pay) {
+    $paymentType = $pay->is_type == 0 ? 'เงินสด' : 'โอนเงิน';
+    $paymentClass = 'badge bg-success';
+
+    $action = '';
+    $action .= '<button type="button" data-id="' . $pay->id . '" data-type="pay" class="btn btn-sm btn-outline-info modalShowPay me-1">
+                   รายละเอียดบิล
                </button>';
 
-            $action .= '<button type="button" data-id="' . $pay->id . '" class="btn btn-sm btn-outline-secondary preview-short me-1">
-                    ออกใบกำกับภาษี
+    $action .= '<button type="button" data-id="' . $pay->id . '" class="btn btn-sm btn-outline-secondary preview-short me-1">
+                   พรีวิวใบเสร็จ
                </button>';
 
-            $action .= '<button type="button" data-id="' . $pay->id . '" class="btn btn-sm btn-outline-warning modalTax">
-                   รายละเอียด-สลิป
+    $action .= '<button type="button" data-id="' . $pay->id . '" class="btn btn-sm btn-outline-warning modalTax">
+                   ออกใบกำกับภาษี
                </button>';
 
-            $info[] = [
-                'payment_number' => $pay->payment_number,
-                'type' => '<span class="' . $paymentClass . '">' . $paymentType . '</span>',
-                'table_id' => 'โต้ะ ' . ($pay->table_id ?? 'Online'),
-                'total' => number_format($pay->total, 2) . ' ฿',
-                'created' => $this->DateThai($pay->created_at),
-                'action' => $action,
-                'data_type' => 'pay',
-                'sort_date' => $pay->created_at
-            ];
-        }
+    $info[] = [
+        'payment_number' => $pay->payment_number,
+        'type' => '<span class="' . $paymentClass . '">' . $paymentType . '</span>',
+        'table_id' => 'โต้ะ ' . ($pay->table_id ?? 'Online'),
+        'total' => number_format($pay->total, 2) . ' ฿',
+        'created' => $this->DateThai($pay->created_at),
+        'action' => $action,
+        'data_type' => 'pay',
+        'sort_date' => $pay->created_at
+    ];
+}
 
-        // รายการจาก Orders table (สลิป)
-        foreach ($orderList as $order) {
-            $paymentType = '';
-            $paymentClass = '';
+// รายการจาก Orders table 
+foreach ($orderList as $order) {
+    $paymentType = '';
+    $paymentClass = '';
 
-            if ($order->status == 4) {
-                $paymentType = 'รอตรวจสอบสลิป';
-                $paymentClass = 'badge bg-warning text-dark';
-            } elseif ($order->status == 5) {
-                $paymentType = 'ยืนยันการชำระแล้ว';
-                $paymentClass = 'badge bg-success';
-            }
+    if ($order->status == 4) {
+        $paymentType = 'รอตรวจสอบสลิป';
+        $paymentClass = 'badge bg-warning text-dark';
+    } elseif ($order->status == 5) {
+        $paymentType = 'ยืนยันการชำระแล้ว';
+        $paymentClass = 'badge bg-success';
+    }
 
-            $action = '';
-            $action .= '<button type="button" data-id="' . $order->id . '" data-type="order" class="btn btn-sm btn-outline-info modalShowPay me-1" title="ดูรายละเอียด">
-                   พรีวิวเสร็จ
+    $action = '';
+    $action .= '<button type="button" data-id="' . $order->id . '" data-type="order" class="btn btn-sm btn-outline-info modalShowPay me-1">
+                   รายละเอียดบิล
                </button>';
 
-            // ปุ่มดูสลิป 
-            if ($order->image) {
-                $action .= '<button type="button" data-image="' . url('storage/' . $order->image) . '" class="btn btn-sm btn-outline-primary viewSlip me-1" title="ดูสลิป">
-                       ดูลลิปโอนเงิน
+    // ปุ่มดูสลิป 
+    if ($order->image) {
+        $action .= '<button type="button" data-image="' . url('storage/' . $order->image) . '" class="btn btn-sm btn-outline-primary viewSlip me-1">
+                       ดูสลิปโอนเงิน
                    </button>';
-            }
+    }
 
-            // ปุ่มยืนยัน/ปฏิเสธ 
-            if ($order->status == 4) {
-                $action .= '<button type="button" data-id="' . $order->id . '" class="btn btn-sm btn-outline-success confirmPayment me-1" title="ยืนยันการชำระ">
-                       รายละเอียด-สลิป
+    // ปุ่มยืนยัน/ปฏิเสธ 
+    if ($order->status == 4) {
+        $action .= '<button type="button" data-id="' . $order->id . '" class="btn btn-sm btn-outline-success confirmPayment me-1">
+                       ออกใบกำกับภาษี
                    </button>';
-            } else {
-                $action .= '<button type="button" data-id="' . $order->id . '" class="btn btn-sm btn-outline-warning preview-short-order" title="พิมพ์ใบเสร็จ">
-                       รายละเอียด-สลิป
+    } else {
+        $action .= '<button type="button" data-id="' . $order->id . '" class="btn btn-sm btn-outline-warning preview-short-order">
+                       ออกใบกำกับภาษี
                    </button>';
-            }
+    }
 
-            $info[] = [
-                'payment_number' => str_pad($order->id, 8, '0', STR_PAD_LEFT),
-                'type' => '<span class="' . $paymentClass . '">' . $paymentType . '</span>',
-                'table_id' => 'โต้ะ ' . ($order->table_id ?? 'N/A'),
-                'total' => number_format($order->total, 2) . ' ฿',
-                'created' => $this->DateThai($order->created_at),
-                'action' => $action,
-                'data_type' => 'order',
-                'sort_date' => $order->created_at
-            ];
-        }
+    $info[] = [
+        'payment_number' => str_pad($order->id, 8, '0', STR_PAD_LEFT),
+        'type' => '<span class="' . $paymentClass . '">' . $paymentType . '</span>',
+        'table_id' => 'โต้ะ ' . ($order->table_id ?? 'N/A'),
+        'total' => number_format($order->total, 2) . ' ฿',
+        'created' => $this->DateThai($order->created_at),
+        'action' => $action,
+        'data_type' => 'order',
+        'sort_date' => $order->created_at
+    ];
+}
 
 
         // เรียงลำดับตามวันที่
@@ -588,7 +590,7 @@ class Admin extends Controller
             $order = Orders::find($orderId);
 
             if ($order && $order->status == 4) {
-
+                
                 $order->status = 5;
 
                 if ($order->save()) {
@@ -1155,6 +1157,6 @@ class Admin extends Controller
 
         return response()->json($data);
     }
-
-
+   
+   
 }
