@@ -75,9 +75,10 @@ $config = Config::first();
 </style>
 <div class="container my-2">
     <div class="d-flex flex-column align-items-center">
-        <div class="title-buy mb-1">
-            🛒 รายการอาหารที่สั่ง
-        </div>
+       <div class="title-buy mb-1" style="color: black;">
+    🛒 รายการอาหารที่สั่ง
+</div>
+
         <div class="card w-100 shadow-sm">
             <div class="card-header bg-primary text-white">
                 <strong>ออเดอร์ของคุณ</strong>
