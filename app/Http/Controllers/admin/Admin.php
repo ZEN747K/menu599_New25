@@ -455,7 +455,7 @@ class Admin extends Controller
                </button>';
 
             $action .= '<button type="button" data-id="' . $pay->id . '" class="btn btn-sm btn-outline-secondary preview-short me-1">
-                   ดูลลิปโอนเงิน
+                    ออกใบกำกับภาษี
                </button>';
 
             $action .= '<button type="button" data-id="' . $pay->id . '" class="btn btn-sm btn-outline-warning modalTax">
@@ -495,7 +495,7 @@ class Admin extends Controller
             // ปุ่มดูสลิป 
             if ($order->image) {
                 $action .= '<button type="button" data-image="' . url('storage/' . $order->image) . '" class="btn btn-sm btn-outline-primary viewSlip me-1" title="ดูสลิป">
-                       ออกใบกำกับภาษี
+                       ดูลลิปโอนเงิน
                    </button>';
             }
 
