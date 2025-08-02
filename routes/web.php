@@ -237,6 +237,9 @@ Route::middleware(['role:admin'])->group(function () {
     Route::get('/upcoming-menus', [Main::class, 'getUpcomingMenus'])->name('getUpcomingMenus');
     //เปลียนสถานะเมนู
     Route::post('/admin/menu/update-stock', [Menu::class, 'updateMenuStock'])->name('updateMenuStock');
+    //ตรวจสอบหน้ารายการชำระเงิน
+    Route::post('/admin/order/confirm-slip-payment', [Admin::class, 'confirmSlipPayment'])->name('confirmSlipPayment');
+    Route::post('/admin/order/reject-slip-payment', [Admin::class, 'rejectSlipPayment'])->name('rejectSlipPayment');
 });
 });
 

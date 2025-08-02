@@ -31,6 +31,36 @@
     #modal-preview .modal-footer {
         border-top: 1px solid #dee2e6;
     }
+
+    /* CSS สำหรับแสดงสลิป */
+    #slip-image {
+        transition: transform 0.3s ease;
+        cursor: zoom-in;
+        max-width: 100%;
+        height: auto;
+    }
+
+    #slip-image:hover {
+        transform: scale(1.02);
+    }
+
+    .badge {
+        font-size: 0.875em;
+    }
+
+    .btn-sm {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+    }
+
+    .slip-container {
+        max-height: 600px;
+        overflow: auto;
+        text-align: center;
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 8px;
+    }
 </style>
 @endsection
 @section('content')
@@ -126,6 +156,62 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ปิด</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal สำหรับดูรูปสลิป -->
+<div class="modal fade" tabindex="-1" aria-labelledby="slipModalLabel" aria-hidden="true" id="modal-slip">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bx bx-image me-2"></i>สลิปการโอนเงิน
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="slip-container">
+                    <img id="slip-image" src="" alt="สลิปการโอนเงิน" style="border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ปิด</button>
+                <a id="download-slip" href="" download class="btn btn-primary">
+                    <i class="bx bx-download me-1"></i>ดาวน์โหลด
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal สำหรับปฏิเสธการชำระเงิน -->
+<div class="modal fade" tabindex="-1" aria-labelledby="rejectModalLabel" aria-hidden="true" id="modal-reject">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bx bx-x-circle me-2 text-danger"></i>ปฏิเสธการชำระเงิน
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="bx bx-info-circle me-2"></i>
+                    การปฏิเสธจะทำให้ออเดอร์กลับไปสถานะ "กำลังทำอาหาร" และลบรูปสลิปออก
+                </div>
+                <div class="mb-3">
+                    <label for="reject-reason" class="form-label">เหตุผลในการปฏิเสธ <span class="text-danger">*</span></label>
+                    <textarea class="form-control" id="reject-reason" rows="3" placeholder="กรุณาระบุเหตุผลในการปฏิเสธ เช่น สลิปไม่ชัดเจน, จำนวนเงินไม่ถูกต้อง" required></textarea>
+                </div>
+                <input type="hidden" id="reject-order-id">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                <button type="button" class="btn btn-danger" id="confirm-reject">
+                    <i class="bx bx-x me-1"></i>ยืนยันการปฏิเสธ
+                </button>
             </div>
         </div>
     </div>
@@ -383,6 +469,162 @@
         return channel === 'pos-app' && (device === 'android' || device === 'ios');
     }
 
+    // ดูรูปสลิป
+    $(document).on('click', '.viewSlip', function(e) {
+        e.preventDefault();
+        var imageUrl = $(this).data('image');
+        
+        if (imageUrl) {
+            $('#slip-image').attr('src', imageUrl);
+            $('#download-slip').attr('href', imageUrl);
+            $('#modal-slip').modal('show');
+        } else {
+            Swal.fire('ไม่พบรูปภาพ', 'ไม่มีรูปสลิปในระบบ', 'warning');
+        }
+    });
+
+    // ยืนยันการชำระเงิน
+    $(document).on('click', '.confirmPayment', function(e) {
+        e.preventDefault();
+        var orderId = $(this).data('id');
+        
+        Swal.fire({
+            title: 'ยืนยันการชำระเงิน?',
+            text: 'คุณแน่ใจหรือไม่ว่าต้องการยืนยันการชำระเงินนี้',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#28a745',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'ยืนยัน',
+            cancelButtonText: 'ยกเลิก'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: 'กำลังประมวลผล...',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    showConfirmButton: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+                
+                $.ajax({
+                    url: "{{ route('confirmSlipPayment') }}",
+                    type: "post",
+                    data: {
+                        order_id: orderId
+                    },
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    success: function(response) {
+                        if (response.status) {
+                            Swal.fire({
+                                title: 'สำเร็จ!',
+                                text: response.message,
+                                icon: 'success',
+                                confirmButtonText: 'ตกลง'
+                            });
+                            $('#myTable').DataTable().ajax.reload(null, false);
+                            $('#myTable2').DataTable().ajax.reload(null, false);
+                        } else {
+                            Swal.fire('เกิดข้อผิดพลาด!', response.message, 'error');
+                        }
+                    },
+                    error: function(xhr) {
+                        var errorMessage = 'ไม่สามารถยืนยันการชำระเงินได้';
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            errorMessage = xhr.responseJSON.message;
+                        }
+                        Swal.fire('เกิดข้อผิดพลาด!', errorMessage, 'error');
+                    }
+                });
+            }
+        });
+    });
+
+    // ปฏิเสธการชำระเงิน
+    $(document).on('click', '.rejectPayment', function(e) {
+        e.preventDefault();
+        var orderId = $(this).data('id');
+        
+        $('#reject-order-id').val(orderId);
+        $('#reject-reason').val('');
+        $('#modal-reject').modal('show');
+    });
+
+    // ยืนยันการปฏิเสธ
+    $('#confirm-reject').click(function(e) {
+        e.preventDefault();
+        var orderId = $('#reject-order-id').val();
+        var reason = $('#reject-reason').val().trim();
+        
+        if (!reason) {
+            Swal.fire('กรุณาระบุเหตุผล', 'กรุณาระบุเหตุผลในการปฏิเสธการชำระเงิน', 'warning');
+            $('#reject-reason').focus();
+            return;
+        }
+        
+        Swal.fire({
+            title: 'ปฏิเสธการชำระเงิน?',
+            text: 'คุณแน่ใจหรือไม่ว่าต้องการปฏิเสธการชำระเงินนี้',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'ปฏิเสธ',
+            cancelButtonText: 'ยกเลิก'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $('#modal-reject').modal('hide');
+                
+                Swal.fire({
+                    title: 'กำลังประมวลผล...',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    showConfirmButton: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+                
+                $.ajax({
+                    url: "{{ route('rejectSlipPayment') }}",
+                    type: "post",
+                    data: {
+                        order_id: orderId,
+                        reason: reason
+                    },
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    success: function(response) {
+                        if (response.status) {
+                            Swal.fire({
+                                title: 'สำเร็จ!',
+                                text: response.message,
+                                icon: 'success',
+                                confirmButtonText: 'ตกลง'
+                            });
+                            $('#myTable').DataTable().ajax.reload(null, false);
+                            $('#myTable2').DataTable().ajax.reload(null, false);
+                        } else {
+                            Swal.fire('เกิดข้อผิดพลาด!', response.message, 'error');
+                        }
+                    },
+                    error: function(xhr) {
+                        var errorMessage = 'ไม่สามารถปฏิเสธการชำระเงินได้';
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            errorMessage = xhr.responseJSON.message;
+                        }
+                        Swal.fire('เกิดข้อผิดพลาด!', errorMessage, 'error');
+                    }
+                });
+            }
+        });
+    });
+
     // รายละเอียดออเดอร์
     $(document).on('click', '.modalShow', function(e) {
         e.preventDefault();
@@ -578,16 +820,25 @@
         $('#pay_id').val(id);
     });
 
-    // ล้างข้อมูล modal เมื่อปิด
     $('#modal-tax-full').on('hidden.bs.modal', function() {
         $('#pay_id').val('');
         $('input').val('');
         $('textarea').val('');
-    })
+    });
 
     $('#modal-pay').on('hidden.bs.modal', function() {
         $('#table_id').val('');
-    })
+    });
+
+    $('#modal-reject').on('hidden.bs.modal', function() {
+        $('#reject-order-id').val('');
+        $('#reject-reason').val('');
+    });
+
+    $('#modal-slip').on('hidden.bs.modal', function() {
+        $('#slip-image').attr('src', '');
+        $('#download-slip').attr('href', '');
+    });
 
     // ส่งข้อมูลใบกำกับภาษี
     $(document).on('submit', '#tax-full', function(e) {
