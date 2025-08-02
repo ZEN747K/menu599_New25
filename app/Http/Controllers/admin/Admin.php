@@ -455,7 +455,7 @@ class Admin extends Controller
                </button>';
 
             $action .= '<button type="button" data-id="' . $pay->id . '" class="btn btn-sm btn-outline-secondary preview-short me-1">
-                   ออกใบกำกับภาษี
+                   ดูลลิปโอนเงิน
                </button>';
 
             $action .= '<button type="button" data-id="' . $pay->id . '" class="btn btn-sm btn-outline-warning modalTax">
