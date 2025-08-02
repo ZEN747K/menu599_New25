@@ -450,17 +450,17 @@ class Admin extends Controller
             $paymentClass = 'badge bg-success';
 
             $action = '';
-            $action .= '<button type="button" data-id="' . $pay->id . '" data-type="pay" class="btn btn-sm btn-info modalShowPay me-1" title="ดูรายละเอียด">
-                       <i class="bx bx-detail"></i>
-                   </button>';
+            $action .= '<button type="button" data-id="' . $pay->id . '" data-type="pay" class="btn btn-sm btn-outline-info modalShowPay me-1">
+                   พรีวิวเสร็จ
+               </button>';
 
-            $action .= '<button type="button" data-id="' . $pay->id . '" class="btn btn-sm btn-secondary preview-short" title="พิมพ์ใบเสร็จ">
-                       <i class="bx bx-printer"></i>
-                   </button>';
+            $action .= '<button type="button" data-id="' . $pay->id . '" class="btn btn-sm btn-outline-secondary preview-short me-1">
+                   ออกใบกำกับภาษี
+               </button>';
 
-            $action .= '<button type="button" data-id="' . $pay->id . '" class="btn btn-sm btn-warning modalTax ms-1" title="ออกใบกำกับภาษี">
-                       <i class="bx bx-receipt"></i>
-                   </button>';
+            $action .= '<button type="button" data-id="' . $pay->id . '" class="btn btn-sm btn-outline-warning modalTax">
+                   รายละเอียด-สลิป
+               </button>';
 
             $info[] = [
                 'payment_number' => $pay->payment_number,
@@ -488,31 +488,27 @@ class Admin extends Controller
             }
 
             $action = '';
-            $action .= '<button type="button" data-id="' . $order->id . '" data-type="order" class="btn btn-sm btn-info modalShowPay me-1" title="ดูรายละเอียด">
-                       <i class="bx bx-detail"></i>
-                   </button>';
+            $action .= '<button type="button" data-id="' . $order->id . '" data-type="order" class="btn btn-sm btn-outline-info modalShowPay me-1" title="ดูรายละเอียด">
+                   พรีวิวเสร็จ
+               </button>';
 
-            // ปุ่มดูสลิป (ถ้ามีรูปสลิป)
+            // ปุ่มดูสลิป 
             if ($order->image) {
-                $action .= '<button type="button" data-image="' . url('storage/' . $order->image) . '" class="btn btn-sm btn-primary viewSlip me-1" title="ดูสลิป">
-                           <i class="bx bx-image"></i>
-                       </button>';
-            }
-
-            // ปุ่มยืนยัน/ปฏิเสธ (ถ้ายังไม่ยืนยัน)
-            if ($order->status == 4) {
-                $action .= '<button type="button" data-id="' . $order->id . '" class="btn btn-sm btn-success confirmPayment me-1" title="ยืนยันการชำระ">
-                           <i class="bx bx-check"></i>
-                       </button>';
-
-                $action .= '<button type="button" data-id="' . $order->id . '" class="btn btn-sm btn-danger rejectPayment me-1" title="ปฏิเสธการชำระ">
-                           <i class="bx bx-x"></i>
-                       </button>';
-            }
-
-            $action .= '<button type="button" data-id="' . $order->id . '" class="btn btn-sm btn-secondary preview-short-order" title="พิมพ์ใบเสร็จ">
-                       <i class="bx bx-printer"></i>
+                $action .= '<button type="button" data-image="' . url('storage/' . $order->image) . '" class="btn btn-sm btn-outline-primary viewSlip me-1" title="ดูสลิป">
+                       ออกใบกำกับภาษี
                    </button>';
+            }
+
+            // ปุ่มยืนยัน/ปฏิเสธ 
+            if ($order->status == 4) {
+                $action .= '<button type="button" data-id="' . $order->id . '" class="btn btn-sm btn-outline-success confirmPayment me-1" title="ยืนยันการชำระ">
+                       รายละเอียด-สลิป
+                   </button>';
+            } else {
+                $action .= '<button type="button" data-id="' . $order->id . '" class="btn btn-sm btn-outline-warning preview-short-order" title="พิมพ์ใบเสร็จ">
+                       รายละเอียด-สลิป
+                   </button>';
+            }
 
             $info[] = [
                 'payment_number' => str_pad($order->id, 8, '0', STR_PAD_LEFT),
@@ -525,6 +521,7 @@ class Admin extends Controller
                 'sort_date' => $order->created_at
             ];
         }
+
 
         // เรียงลำดับตามวันที่
         usort($info, function ($a, $b) {
@@ -591,7 +588,7 @@ class Admin extends Controller
             $order = Orders::find($orderId);
 
             if ($order && $order->status == 4) {
-                
+
                 $order->status = 5;
 
                 if ($order->save()) {
@@ -1158,6 +1155,6 @@ class Admin extends Controller
 
         return response()->json($data);
     }
-   
-   
+
+
 }
