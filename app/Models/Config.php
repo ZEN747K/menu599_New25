@@ -26,9 +26,7 @@ class Config extends Model
         return $this->hasMany(ConfigPromptpay::class, 'config_id');
     }
 
-    /**
-     * ความสัมพันธ์กับ ConfigPromptpay ที่ active
-     */
+   
     public function activePromptpay()
     {
         return $this->hasOne(ConfigPromptpay::class, 'config_id')->where('is_active', 1);

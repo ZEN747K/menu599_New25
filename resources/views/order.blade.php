@@ -55,7 +55,7 @@
                                     <th class="text-center">สถานะ</th>
                                     <th class="text-center">จัดการ</th>
                                 </tr>
-                            </thead>
+                            </thead>    
                             <tbody>
                             </tbody>
                         </table>
