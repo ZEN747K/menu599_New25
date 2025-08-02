@@ -82,7 +82,7 @@
                                     <th class="text-center">สถานะ</th>
                                     <th class="text-center">จำนวนคงเหลือ</th>
                                     <th class="text-center">สถานะการขาย</th>
-                                    <th class="text-center">จัดการด่วน</th>
+                                    <th class="text-center">เปิดปิดเมนู</th>
                                     <th class="text-center">ตัวเลือก</th>
                                     <th class="text-center">จัดการ</th>
                                 </tr>
