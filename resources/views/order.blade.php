@@ -992,6 +992,131 @@
             }
         });
     });
+     // ปุ่มพรีวิวใบเสร็จสำหรับสลิป
+    $(document).on('click', '.preview-short-order', function(e) {
+        e.preventDefault();
+        var orderId = $(this).data('id');
+        console.log('Preview order button clicked, ID:', orderId);
+        
+        Swal.showLoading();
+        
+        var previewUrl = '{{ route("printReceiptFromOrder", ":id") }}'.replace(':id', orderId);
+        console.log('Preview Order URL:', previewUrl);
+        
+        $('#preview-frame').attr('src', previewUrl);
+        
+        $('#modal-preview').data('receipt-id', orderId);
+        $('#modal-preview').data('receipt-type', 'order');
+        
+        Swal.close();
+        $('#modal-preview').modal('show');
+    });
+
+    $(document).off('click', '#confirm-print'); 
+    $(document).on('click', '#confirm-print', function(e) {
+        e.preventDefault();
+        var id = $('#modal-preview').data('receipt-id');
+        var type = $('#modal-preview').data('receipt-type') || 'pay';
+        
+        if (id) {
+            var printUrl;
+            
+            if (type === 'order') {
+                printUrl = '{{ route("printReceiptFromOrder", ":id") }}'.replace(':id', id);
+            } else {
+                printUrl = '{{ route("printReceipt", ":id") }}'.replace(':id', id);
+            }
+            
+            if (isMobileApp()) {
+                const channel = document.querySelector('meta[name="app-channel"]')?.getAttribute('content');
+                const device = document.querySelector('meta[name="app-device"]')?.getAttribute('content');
+                printUrl += `?channel=${channel}&device=${device}`;
+            }
+            
+            var printWindow = window.open(printUrl, '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
+            
+            if (printWindow) {
+                $('#modal-preview').modal('hide');
+            }
+        }
+    });
+
+    $(document).off('click', '.modalShowPay'); 
+    $(document).on('click', '.modalShowPay', function(e) {
+        e.preventDefault();
+        var id = $(this).data('id');
+        var type = $(this).data('type') || 'pay'; 
+        
+        $.ajax({
+            type: "post",
+            url: "{{ route('listOrderDetailPay') }}",
+            data: {
+                id: id,
+                type: type
+            },
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            success: function(response) {
+                $('#modal-detail-pay').modal('show');
+                $('#body-html-pay').html(response);
+            },
+            error: function(xhr) {
+                Swal.fire('เกิดข้อผิดพลาด!', 'ไม่สามารถดึงข้อมูลได้', 'error');
+            }
+        });
+    });
+
+    $(document).on('click', '.modalTaxOrder', function(e) {
+        e.preventDefault();
+        var orderId = $(this).data('id');
+        
+        Swal.fire({
+            title: 'ออกใบกำกับภาษี',
+            text: 'ต้องการออกใบกำกับภาษีสำหรับออเดอร์นี้หรือไม่?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'ออกใบกำกับภาษี',
+            cancelButtonText: 'ยกเลิก'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                var taxUrl = '{{ route("printReceiptFromOrder", ":id") }}'.replace(':id', orderId) + '?type=tax';
+                window.open(taxUrl, '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
+            }
+        });
+    });
+
+    $('#modal-preview').on('hidden.bs.modal', function() {
+        $(this).removeData('receipt-id').removeData('receipt-type');
+        $('#preview-frame').attr('src', 'about:blank');
+    });
+
+    $('#preview-frame').on('load', function() {
+        var iframe = this;
+        try {
+            var iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+            if (iframeDoc.title.includes('404') || iframeDoc.title.includes('Error')) {
+                throw new Error('Page not found');
+            }
+        } catch (e) {
+            console.error('Preview loading error:', e);
+            Swal.fire('ไม่สามารถโหลดพรีวิวได้', 'กรุณาลองใหม่อีกครั้ง', 'error');
+            $('#modal-preview').modal('hide');
+        }
+    });
+
+    function reloadDataTables() {
+        $('#myTable').DataTable().ajax.reload(null, false);
+        $('#myTable2').DataTable().ajax.reload(null, false);
+    }
+
+    console.log('Order management JavaScript loaded successfully');
+    console.log('Available routes:', {
+        printReceipt: '{{ route("printReceipt", "ID") }}',
+        printReceiptFromOrder: '{{ route("printReceiptFromOrder", "ID") }}',
+        confirmSlipPayment: '{{ route("confirmSlipPayment") }}',
+        rejectSlipPayment: '{{ route("rejectSlipPayment") }}'
+    });
 
 </script>
 @endsection

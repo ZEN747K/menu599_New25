@@ -240,6 +240,8 @@ Route::middleware(['role:admin'])->group(function () {
     //ตรวจสอบหน้ารายการชำระเงิน
     Route::post('/admin/order/confirm-slip-payment', [Admin::class, 'confirmSlipPayment'])->name('confirmSlipPayment');
     Route::post('/admin/order/reject-slip-payment', [Admin::class, 'rejectSlipPayment'])->name('rejectSlipPayment');
+    Route::get('/admin/order/printReceiptFromOrder/{id}', [Admin::class, 'printReceiptFromOrder'])->name('printReceiptFromOrder');
+
 });
 });
 

@@ -599,52 +599,37 @@ foreach ($orderList as $order) {
     }
 
     public function confirmSlipPayment(Request $request)
-    {
-        $data = [
-            'status' => false,
-            'message' => 'ไม่สามารถยืนยันการชำระเงินได้',
-        ];
+{
+    $data = [
+        'status' => false,
+        'message' => 'ไม่สามารถยืนยันการชำระเงินได้',
+    ];
 
-        $orderId = $request->input('order_id');
+    $orderId = $request->input('order_id');
 
-        if ($orderId) {
-            $order = Orders::find($orderId);
+    if ($orderId) {
+        $order = Orders::find($orderId);
 
-            if ($order && $order->status == 4) {
+        if ($order && $order->status == 4) {
+            $order->status = 5;
+
+            if ($order->save()) {
+           
                 
-                $order->status = 5;
-
-                if ($order->save()) {
-                    // สร้างรายการชำระเงิน (ถ้าต้องการ)
-                    $pay = new Pay();
-                    $pay->payment_number = $this->generateRunningNumber();
-                    $pay->table_id = $order->table_id;
-                    $pay->total = $order->total;
-                    $pay->is_type = 1; // โอนเงิน
-                    $pay->save();
-
-                    // สร้าง PayGroup เชื่อมโยง
-                    $paygroup = new PayGroup();
-                    $paygroup->pay_id = $pay->id;
-                    $paygroup->order_id = $order->id;
-                    $paygroup->save();
-
-                    $data = [
-                        'status' => true,
-                        'message' => 'ยืนยันการชำระเงินเรียบร้อยแล้ว',
-                    ];
-                }
-            } else {
-                $data['message'] = 'ไม่พบออเดอร์หรือสถานะไม่ถูกต้อง';
+                $data = [
+                    'status' => true,
+                    'message' => 'ยืนยันการชำระเงินเรียบร้อยแล้ว',
+                ];
             }
+        } else {
+            $data['message'] = 'ไม่พบออเดอร์หรือสถานะไม่ถูกต้อง';
         }
-
-        return response()->json($data);
     }
 
-    /**
-     * ปฏิเสธการชำระเงินจากสลิป
-     */
+    return response()->json($data);
+}
+
+   
     public function rejectSlipPayment(Request $request)
     {
         $data = [
@@ -659,12 +644,10 @@ foreach ($orderList as $order) {
             $order = Orders::find($orderId);
 
             if ($order && $order->status == 4) {
-                // เปลี่ยนกลับเป็นกำลังทำอาหาร
                 $order->status = 1;
 
                 // ลบรูปสลิป
                 if ($order->image) {
-                    // ลบไฟล์จาก storage
                     $imagePath = storage_path('app/public/' . $order->image);
                     if (file_exists($imagePath)) {
                         unlink($imagePath);
@@ -692,6 +675,38 @@ foreach ($orderList as $order) {
 
         return response()->json($data);
     }
+    public function printReceiptFromOrder($orderId)
+{
+    $config = Config::first();
+    $order = Orders::with('user')->find($orderId);
+    
+    if (!$order) {
+        abort(404, 'ไม่พบออเดอร์');
+    }
+
+    $order_details = OrdersDetails::where('order_id', $orderId)
+        ->with('menu', 'option.option')
+        ->get();
+
+    $pay = (object)[
+        'id' => $orderId,
+        'payment_number' => str_pad($orderId, 8, '0', STR_PAD_LEFT),
+        'total' => $order->total,
+        'is_type' => 1, 
+        'created_at' => $order->created_at,
+        'table_id' => $order->table_id
+    ];
+
+    $data = [
+        'config' => $config,
+        'pay' => $pay,
+        'order' => $order_details,
+        'users' => $order->user ?? null,
+        'type' => 'slip_payment'
+    ];
+
+    return view('print_web', ['jsonData' => json_encode($data)]);
+}
 
     /**
      * แก้ไข ListOrderPay ให้ถูกต้อง - ดึงรายการจาก Pay table และ Orders table
