@@ -24,54 +24,66 @@ use PromptPayQR\Builder;
 
 class Admin extends Controller
 {
-    public function dashboard()
-    {
-        $data['function_key'] = __FUNCTION__;
-        if (session('user')->is_rider != 1) {
-            $data['orderday'] = Orders::select(DB::raw("SUM(total)as total"))->where('status', 3)->whereDay('created_at', date('d'))->first();
-            $data['ordermouth'] = Orders::select(DB::raw("SUM(total)as total"))->where('status', 3)->whereMonth('created_at', date('m'))->first();
-            $data['orderyear'] = Orders::select(DB::raw("SUM(total)as total"))->where('status', 3)->whereYear('created_at', date('Y'))->first();
-            $data['moneyDay'] = Pay::select(DB::raw("SUM(total)as total"))->where('is_type', 0)->whereDay('created_at', date('d'))->first();
-            $data['transferDay'] = Pay::select(DB::raw("SUM(total)as total"))->where('is_type', 1)->whereDay('created_at', date('d'))->first();
-            $data['delivery'] = Orders::where('status', 3)->where('table_id')->whereDay('created_at', date('d'))->count();
-        } else {
-            $data['delivery_day'] = Orders::join('rider_sends', 'rider_sends.order_id', '=', 'orders.id')
-                ->where('orders.status', 3)
-                ->where('rider_id', session('user')->id)
-                ->whereDay('orders.created_at', date('d'))
-                ->count();
-            $data['delivery_mouth'] = Orders::join('rider_sends', 'rider_sends.order_id', '=', 'orders.id')
-                ->where('orders.status', 3)
-                ->where('rider_id', session('user')->id)
-                ->whereMonth('orders.created_at', date('m'))
-                ->count();
-        }
-        $data['ordertotal'] = Orders::count();
-        $data['rider'] = User::where('is_rider', 1)->get();
+  public function dashboard()
+{
+    $data['function_key'] = __FUNCTION__;
+    if (session('user')->is_rider != 1) {
+        $data['orderday'] = $this->getCompletedOrdersTotal('day');
+        $data['ordermouth'] = $this->getCompletedOrdersTotal('month');
+        $data['orderyear'] = $this->getCompletedOrdersTotal('year');
+        
+        // คำนวณเงินสดและเงินโอo
+        $data['moneyDay'] = $this->getPaymentTotalsByType(0, 'day'); // เงินสด
+        $data['transferDay'] = $this->getPaymentTotalsByType(1, 'day'); // เงินโอน + สลิป
 
-        $menu = Menu::select('id', 'name')->get();
-        $item_menu = array();
-        $item_order = array();
-        if (count($menu) > 0) {
-            foreach ($menu as $rs) {
-                $item_menu[] = $rs->name;
-                $menu_order = OrdersDetails::Join('orders', 'orders.id', '=', 'orders_details.order_id')->where('orders.status', 3)->where('menu_id', $rs->id)->groupBy('menu_id')->count();
-                $item_order[] = $menu_order;
-            }
-        }
+        $data['delivery'] = Orders::whereIn('status', [3, 5])
+            ->whereNotNull('table_id')
+            ->whereDay('created_at', date('d'))
+            ->count();
+    } else {
+        $data['delivery_day'] = Orders::join('rider_sends', 'rider_sends.order_id', '=', 'orders.id')
+            ->whereIn('orders.status', [3, 5])
+            ->where('rider_id', session('user')->id)
+            ->whereDay('orders.created_at', date('d'))
+            ->count();
+            
+        $data['delivery_mouth'] = Orders::join('rider_sends', 'rider_sends.order_id', '=', 'orders.id')
+            ->whereIn('orders.status', [3, 5])
+            ->where('rider_id', session('user')->id)
+            ->whereMonth('orders.created_at', date('m'))
+            ->count();
+    }
+    
+    $data['ordertotal'] = Orders::count();
+    $data['rider'] = User::where('is_rider', 1)->get();
 
-        $item_mouth = array();
-        for ($i = 1; $i < 13; $i++) {
-            $query = Orders::select(DB::raw("SUM(total)as total"))->where('status', 3)->whereMonth('created_at', date($i))->first();
-            $item_mouth[] = $query->total;
+    $menu = Menu::select('id', 'name')->get();
+    $item_menu = array();
+    $item_order = array();
+    if (count($menu) > 0) {
+        foreach ($menu as $rs) {
+            $item_menu[] = $rs->name;
+            $menu_order = OrdersDetails::Join('orders', 'orders.id', '=', 'orders_details.order_id')
+                ->whereIn('orders.status', [3, 5])
+                ->where('menu_id', $rs->id)
+                ->groupBy('menu_id')
+                ->count();
+            $item_order[] = $menu_order;
         }
-        $data['item_menu'] = $item_menu;
-        $data['item_order'] = $item_order;
-        $data['item_mouth'] = $item_mouth;
-        $data['config'] = Config::first();
-        return view('dashboard', $data);
     }
 
+    $item_mouth = array();
+    for ($i = 1; $i < 13; $i++) {
+        $query = $this->getCompletedOrdersTotal('month', $i);
+        $item_mouth[] = $query->total;
+    }
+    
+    $data['item_menu'] = $item_menu;
+    $data['item_order'] = $item_order;
+    $data['item_mouth'] = $item_mouth;
+    $data['config'] = Config::first();
+    return view('dashboard', $data);
+}
     public function ListOrder()
     {
         $data = [
@@ -1068,61 +1080,82 @@ foreach ($orderList as $order) {
     }
 
     public function ListOrderPeople()
-    {
-        $data = [
-            'status' => false,
-            'message' => '',
-            'data' => []
-        ];
-        $order = DB::table('orders as o')
-            ->select(
-                'o.users_id',
-                'users.name'
-            )
-            ->join('users', 'o.users_id', '=', 'users.id')
-            ->whereNull('o.table_id')
-            ->whereIn('o.status', [3])
-            ->groupBy('o.users_id', 'users.name')
-            ->get();
+{
+    $data = [
+        'status' => false,
+        'message' => '',
+        'data' => []
+    ];
+    
+  
+    $order = DB::table('orders as o')
+        ->select(
+            'o.users_id',
+            'users.name'
+        )
+        ->join('users', 'o.users_id', '=', 'users.id')
+        ->whereNull('o.table_id')
+        ->whereIn('o.status', [3, 5])
+        ->groupBy('o.users_id', 'users.name')
+        ->get();
 
-        if (count($order) > 0) {
-            $info = [];
-            foreach ($order as $rs) {
-                $total = Orders::select(DB::raw("SUM(total)as total"))
-                    ->where('status', 3)
-                    ->where('users_id', $rs->users_id)
-                    ->first();
-                $moneyDay = Orders::select(DB::raw("SUM(orders.total)as total"))
-                    ->join('pay_groups', 'pay_groups.order_id', '=', 'orders.id')
-                    ->join('pays', 'pays.id', '=', 'pay_groups.pay_id')
-                    ->where('orders.status', 3)
-                    ->where('orders.users_id', $rs->users_id)
-                    ->where('pays.is_type', 0)
-                    ->first();
-                $transferDay = Orders::select(DB::raw("SUM(orders.total)as total"))
-                    ->join('pay_groups', 'pay_groups.order_id', '=', 'orders.id')
-                    ->join('pays', 'pays.id', '=', 'pay_groups.pay_id')
-                    ->where('orders.status', 3)
-                    ->where('orders.users_id', $rs->users_id)
-                    ->where('pays.is_type', 1)
-                    ->first();
-                $delivery = Orders::where('status', 3)->where('users_id', $rs->users_id)->whereNull('table_id')->count();
-                $info[] = [
-                    'name' => $rs->name,
-                    'total' => $total->total,
-                    'moneyDay' => $moneyDay->total,
-                    'transferDay' => $transferDay->total ?? '0',
-                    'delivery' => $delivery ?? '0',
-                ];
-            }
-            $data = [
-                'data' => $info,
-                'status' => true,
-                'message' => 'success'
+    if (count($order) > 0) {
+        $info = [];
+        foreach ($order as $rs) {
+            // ยอดรวมทั้งหมด
+            $total = Orders::select(DB::raw("SUM(total)as total"))
+                ->whereIn('status', [3, 5]) 
+                ->where('users_id', $rs->users_id)
+                ->first();
+                
+            // เงินสดจาก 
+            $moneyDay = Orders::select(DB::raw("SUM(orders.total)as total"))
+                ->join('pay_groups', 'pay_groups.order_id', '=', 'orders.id')
+                ->join('pays', 'pays.id', '=', 'pay_groups.pay_id')
+                ->whereIn('orders.status', [3, 5]) 
+                ->where('orders.users_id', $rs->users_id)
+                ->where('pays.is_type', 0)
+                ->first();
+                
+            // เงินโอน
+            $transferFromPay = Orders::select(DB::raw("SUM(orders.total)as total"))
+                ->join('pay_groups', 'pay_groups.order_id', '=', 'orders.id')
+                ->join('pays', 'pays.id', '=', 'pay_groups.pay_id')
+                ->whereIn('orders.status', [3, 5]) 
+                ->where('orders.users_id', $rs->users_id)
+                ->where('pays.is_type', 1)
+                ->first();
+                
+            // เงินโอนจากสลิป 
+            $transferFromSlip = Orders::select(DB::raw("SUM(total)as total"))
+                ->where('status', 5)
+                ->where('users_id', $rs->users_id)
+                ->first();
+                
+            $transferDay = ($transferFromPay->total ?? 0) + ($transferFromSlip->total ?? 0);
+            
+            // จำนวนการจัดส่ง
+            $delivery = Orders::whereIn('status', [3, 5]) 
+                ->where('users_id', $rs->users_id)
+                ->whereNull('table_id')
+                ->count();
+                
+            $info[] = [
+                'name' => $rs->name,
+                'total' => $total->total,
+                'moneyDay' => $moneyDay->total ?? 0,
+                'transferDay' => $transferDay ?? '0',
+                'delivery' => $delivery ?? '0',
             ];
         }
-        return response()->json($data);
+        $data = [
+            'data' => $info,
+            'status' => true,
+            'message' => 'success'
+        ];
     }
+    return response()->json($data);
+}
     public function paymentConfirm(Request $request)
     {
         $data = [
@@ -1159,4 +1192,65 @@ foreach ($orderList as $order) {
     }
    
    
+private function getCompletedOrdersTotal($period = 'day', $date = null)
+{
+    $query = Orders::select(DB::raw("SUM(total) as total"))
+        ->whereIn('status', [3, 5]); 
+        
+    switch ($period) {
+        case 'day':
+            $query->whereDay('created_at', $date ?? date('d'));
+            break;
+        case 'month':
+            $query->whereMonth('created_at', $date ?? date('m'));
+            break;
+        case 'year':
+            $query->whereYear('created_at', $date ?? date('Y'));
+            break;
+    }
+    
+    return $query->first();
+}
+private function getPaymentTotalsByType($type, $period = 'day', $date = null)
+{
+    // เงินจาก Pay table
+    $payQuery = Pay::select(DB::raw("SUM(total) as total"))
+        ->where('is_type', $type);
+        
+    switch ($period) {
+        case 'day':
+            $payQuery->whereDay('created_at', $date ?? date('d'));
+            break;
+        case 'month':
+            $payQuery->whereMonth('created_at', $date ?? date('m'));
+            break;
+        case 'year':
+            $payQuery->whereYear('created_at', $date ?? date('Y'));
+            break;
+    }
+    
+    $payTotal = $payQuery->first()->total ?? 0;
+    
+    if ($type == 1) {
+        $slipQuery = Orders::select(DB::raw("SUM(total) as total"))
+            ->where('status', 5); 
+            
+        switch ($period) {
+            case 'day':
+                $slipQuery->whereDay('created_at', $date ?? date('d'));
+                break;
+            case 'month':
+                $slipQuery->whereMonth('created_at', $date ?? date('m'));
+                break;
+            case 'year':
+                $slipQuery->whereYear('created_at', $date ?? date('Y'));
+                break;
+        }
+        
+        $slipTotal = $slipQuery->first()->total ?? 0;
+        $payTotal += $slipTotal;
+    }
+    
+    return (object)['total' => $payTotal];
+}
 }
