@@ -488,7 +488,7 @@ foreach ($payList as $pay) {
     ];
 }
 
-// รายการจาก Orders table 
+// รายการ
 foreach ($orderList as $order) {
     $paymentType = '';
     $paymentClass = '';
@@ -515,11 +515,20 @@ foreach ($orderList as $order) {
 
     // ปุ่มยืนยัน/ปฏิเสธ 
     if ($order->status == 4) {
-        $action .= '<button type="button" data-id="' . $order->id . '" class="btn btn-sm btn-outline-success confirmPayment me-1">
-                       ออกใบกำกับภาษี
+        $action .= '<button type="button" data-id="' . $order->id . '" class="btn btn-sm btn-outline-success confirmPayment me-1" title="ยืนยันการชำระ">
+                       ยืนยันการชำระ
+                   </button>';
+
+        $action .= '<button type="button" data-id="' . $order->id . '" class="btn btn-sm btn-outline-danger rejectPayment me-1" title="ปฏิเสธการชำระ">
+                       ปฏิเสธการชำระ
                    </button>';
     } else {
-        $action .= '<button type="button" data-id="' . $order->id . '" class="btn btn-sm btn-outline-warning preview-short-order">
+        // ปุ่มสำหรับยืนยันแล้ว
+        $action .= '<button type="button" data-id="' . $order->id . '" class="btn btn-sm btn-outline-warning preview-short-order me-1">
+                       พรีวิวใบเสร็จ
+                   </button>';
+        
+        $action .= '<button type="button" data-id="' . $order->id . '" class="btn btn-sm btn-outline-warning modalTax">
                        ออกใบกำกับภาษี
                    </button>';
     }
