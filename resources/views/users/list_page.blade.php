@@ -115,135 +115,113 @@
     <script src="{{ asset('assets/vendor/libs/jquery/jquery.js') }}"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            const container = document.getElementById('order-summary');
-            const totalPriceEl = document.getElementById('total-price');
-            let cart = JSON.parse(localStorage.getItem('cart')) || [];
-            console.log(cart)
+document.addEventListener("DOMContentLoaded", function() {
+    const confirmButton = document.getElementById('confirm-order-btn');
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    const tableParam = urlParams.get('table');
+    
+    confirmButton.addEventListener('click', function(event) {
+        event.preventDefault();
 
-            function renderOrderList() {
+        const fileInput = document.getElementById('silp');
+        const file = fileInput.files[0];
+        const remarkInput = document.getElementById('remark');
 
-                container.innerHTML = '';
-                let total = 0;
-                if (cart.length === 0) {
-                    const noItemsMessage = document.createElement('div');
-                    noItemsMessage.textContent = "ท่านยังไม่ได้เลือกสินค้า";
-                    container.appendChild(noItemsMessage);
-                } else {
-                    const mergedItems = {};
-                    cart.forEach(item => {
-                        if (!mergedItems[item.name]) {
-                            mergedItems[item.name] = [];
-                        }
-                        mergedItems[item.name].push(item);
-                    });
-
-                    for (const name in mergedItems) {
-                        const groupedItems = mergedItems[name];
-                        let totalPrice = 0;
-
-                        groupedItems.forEach(item => {
-                            totalPrice += item.total_price;
-
-                            const optionsText = (item.options && item.options.length) ?
-                                item.options.map(opt => opt.label).join(', ') :
-                                '-';
-
-                            const row = document.createElement('div');
-                            row.className =
-                                'row justify-content-between align-items-start fs-6 mb-2 text-start px-1';
-
-                            const leftCol = document.createElement('div');
-                            leftCol.className = 'col-9 d-flex flex-column justify-content-start lh-sm';
-
-                            const title = document.createElement('div');
-                            title.className = 'card-title m-0';
-                            title.textContent = item.name + " x" + item.amount;
-
-                            const optionTextEl = document.createElement('div');
-                            optionTextEl.className = 'text-muted';
-                            optionTextEl.style.fontSize = '12px';
-                            optionTextEl.textContent = optionsText;
-
-                            leftCol.appendChild(title);
-                            leftCol.appendChild(optionTextEl);
-
-                            const rightCol = document.createElement('div');
-                            rightCol.className = 'col-2 d-flex flex-column align-items-end';
-
-                            const priceText = document.createElement('div');
-                            priceText.textContent = item.total_price.toLocaleString();
-
-                            const editBtn = document.createElement('a');
-                            editBtn.className = 'btn-edit';
-                            editBtn.textContent = 'แก้ไข';
-                            editBtn.href = `/detail/${item.category_id}#select-${item.id}&uuid=${item.uuid}`;
-
-                            rightCol.appendChild(priceText);
-                            rightCol.appendChild(editBtn);
-
-                            row.appendChild(leftCol);
-                            row.appendChild(rightCol);
-                            container.appendChild(row);
-                        });
-
-
-                        total += totalPrice;
-                    }
-                }
-
-                totalPriceEl.textContent = total.toLocaleString();
-            }
-
-            renderOrderList();
-
-            const confirmButton = document.getElementById('confirm-order-btn');
-
-            function toggleConfirmButton(cart) {
-                if (Object.keys(cart).length > 0) {
-                    confirmButton.style.display = 'inline-block';
-                } else {
-                    confirmButton.style.display = 'none';
-                }
-            }
-
-
-            toggleConfirmButton(cart);
-
-            confirmButton.addEventListener('click', function(event) {
-                event.preventDefault();
-                if (Object.keys(cart).length > 0) {
-                    $.ajax({
-                        type: "post",
-                        url: "{{ route('SendOrder') }}",
-                        data: {
-                            cart: cart,
-                            remark: $('#remark').val()
-                        },
-                        headers: {
-                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                        },
-                        dataType: "json",
-                        success: function(response) {
-                            if (response.status == true) {
-                                Swal.fire(response.message, "", "success");
-                                localStorage.removeItem('cart');
-                                cart = {}; // เคลียร์ตัวแปร cart ด้วย
-                                toggleConfirmButton(cart); // ซ่อนปุ่ม
-                                setTimeout(() => {
-                                    location.reload();
-                                }, 3000);
-                            } else {
-                                Swal.fire(response.message, "", "error");
-                                toggleConfirmButton(cart);
-                            }
-                        }
-                    });
-                }
+        if (!file) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'กรุณาแนบสลิป',
+                text: 'กรุณาเลือกไฟล์สลิปการโอนเงินก่อน'
             });
+            return;
+        }
 
+        // ตรวจสอบประเภทไฟล์
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+        if (!allowedTypes.includes(file.type)) {
+            Swal.fire({
+                icon: 'error',
+                title: 'ไฟล์ไม่ถูกต้อง',
+                text: 'กรุณาเลือกไฟล์รูปภาพเท่านั้น (JPG, PNG)'
+            });
+            return;
+        }
+
+        // ตรวจสอบขนาดไฟล์ (5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            Swal.fire({
+                icon: 'error',
+                title: 'ไฟล์ใหญ่เกินไป',
+                text: 'ขนาดไฟล์ต้องไม่เกิน 5MB'
+            });
+            return;
+        }
+
+        Swal.fire({
+            title: 'กำลังแนบสลิป...',
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            showConfirmButton: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
         });
-    </script>
+
+        const formData = new FormData();
+        formData.append('remark', remarkInput.value);
+        formData.append('silp', file);
+        
+        if (tableParam) {
+            formData.append('table_param', tableParam);
+        }
+
+        $.ajax({
+            type: "POST",
+            url: "{{ route('confirmPay') }}",
+            data: formData,
+            processData: false,
+            contentType: false,
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            success: function(response) {
+                Swal.close();
+                if (response.status == true) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'สำเร็จ!',
+                        text: response.message,
+                        confirmButtonText: 'ตกลง'
+                    }).then(() => {
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'เกิดข้อผิดพลาด!',
+                        text: response.message
+                    });
+                }
+            },
+            error: function(xhr) {
+                Swal.close();
+                let errorMessage = 'เกิดข้อผิดพลาดในการแนบสลิป';
+                
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errorMessage = xhr.responseJSON.message;
+                }
+                
+                Swal.fire({
+                    icon: 'error',
+                    title: 'เกิดข้อผิดพลาด!',
+                    text: errorMessage
+                });
+            }
+        });
+    });
+});
+</script>
 
 
 

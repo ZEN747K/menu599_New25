@@ -216,33 +216,46 @@ class Main extends Controller
     }
     
     public function listorder()
-    {
-        $orderlist = [];
-        $orderlist = Orders::where('table_id', session('table_id'))->whereIn('status', [1, 2])->get();
-        $config = Config::first();
-        $config_promptpay = ConfigPromptpay::where('config_id', $config->id)->first();
-        $qr_code = '';
-        if ($config_promptpay) {
-            if ($config_promptpay->promptpay != '') {
-                $qr_code = PromptPayQRBuilder::staticMerchantPresentedQR($config_promptpay->promptpay)->toSvgString();
-                $qr_code = '<div class="row g-3 mb-3">
-                    <div class="col-md-12">
-                        ' . $qr_code . '
-                    </div>
-                </div>';
-            }
+{
+    // ดึงข้อมูลออเดอร์จาก session หรือ database
+    $tableId = session('table_id');
+    $sessionOrders = session('orders', []);
+    
+    // ถ้าไม่มีใน session ให้ดึงจาก URL parameter
+    if (!$tableId && request()->has('table')) {
+        $tableNumber = request()->get('table');
+        $table = Table::where('table_number', $tableNumber)->first();
+        if ($table) {
+            $tableId = $table->id;
+            session(['table_id' => $tableId]);
         }
-        if ($config->image_qr != '') {
-            if ($qr_code == '') {
-                $qr_code =  '<div class="row g-3 mb-3">
-                    <div class="col-md-12">
-                        <img width="100%" src="' . url('storage/' . $config->image_qr) . '">
-                    </div>
-                </div>';
-            }
-        }
-        return view('users.order', compact('orderlist', 'qr_code'));
     }
+    
+    $orderlist = [];
+    
+    if ($tableId) {
+        $orderlist = Orders::where('table_id', $tableId)
+            ->whereIn('status', [1, 2, 4, 5]) 
+            ->orderBy('created_at', 'desc')
+            ->get();
+    }
+    
+    $config = Config::first();
+    $total = $orderlist->sum('total');
+    
+    $qr_code = '';
+    if ($config) {
+        if ($config->promptpay) {
+            $qr_code = Builder::staticMerchantPresentedQR($config->promptpay)
+                ->setAmount($total)
+                ->toSvgString();
+        } elseif ($config->image_qr) {
+            $qr_code = '<img width="100%" src="' . url('storage/' . $config->image_qr) . '">';
+        }
+    }
+    
+    return view('users.list_order', compact('orderlist', 'qr_code'));
+}
 
     public function listorderDetails(Request $request)
     {
@@ -297,47 +310,109 @@ class Main extends Controller
     ];
 
     try {
+        // Debug: ตรวจสอบ session
+        \Log::info('Session data: ', [
+            'orders' => session('orders', []),
+            'table_id' => session('table_id'),
+            'all_session' => session()->all()
+        ]);
+
+        // วิธีที่ 1: ใช้ session
         $orders = session('orders', []);
         $tableId = session('table_id');
+        
+        // วิธีที่ 2: ถ้า session หมด ให้ดึงจาก database
+        if (empty($orders) && !$tableId) {
+            // ดึงออเดอร์ล่าสุดที่ยังไม่ได้ชำระเงิน
+            $tableId = $request->input('table_id'); // ส่งมาจาก frontend
+            
+            if ($tableId) {
+                $ordersFromDB = Orders::where('table_id', $tableId)
+                    ->whereIn('status', [1, 2]) // กำลังทำอาหาร หรือ เสิร์ฟแล้ว
+                    ->get();
+                    
+                $orders = $ordersFromDB->map(function($order) {
+                    return [
+                        'order_id' => $order->id,
+                        'total' => $order->total
+                    ];
+                })->toArray();
+            }
+        }
+
         $remark = $request->input('remark');
         
         if (empty($orders)) {
-            $data['message'] = 'ไม่พบรายการสั่งอาหาร';
+            $data['message'] = 'ไม่พบรายการสั่งอาหาร กรุณาสั่งอาหารก่อน';
             return response()->json($data);
         }
 
-        if ($request->hasFile('silp')) {
-            $file = $request->file('silp');
-            $filename = time() . '_' . $file->getClientOriginalName();
-            $path = $file->storeAs('slips', $filename, 'public');
-
-            foreach ($orders as $order) {
-                $orderModel = Orders::find($order['order_id']);
-                if ($orderModel) {
-                    $orderModel->status = 4; 
-                    $orderModel->image = $path;
-                    if ($remark) {
-                        $orderModel->remark = $remark;
-                    }
-                    $orderModel->save();
-                }
-            }
-
-            $this->sendPaymentNotification($tableId, $orders);
-
-            session()->forget(['orders', 'table_id']);
-
-            $data = [
-                'status' => true,
-                'message' => 'แนบสลิปเรียบร้อยแล้ว รอการตรวจสอบจากเจ้าหน้าที่',
-            ];
+        if (!$tableId) {
+            $data['message'] = 'ไม่พบข้อมูลโต้ะ';
+            return response()->json($data);
         }
+
+        // ตรวจสอบไฟล์สลิป
+        if (!$request->hasFile('silp')) {
+            $data['message'] = 'กรุณาแนบสลิปการโอนเงิน';
+            return response()->json($data);
+        }
+
+        $file = $request->file('silp');
+        
+        // ตรวจสอบประเภทไฟล์
+        $allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+        if (!in_array($file->getMimeType(), $allowedTypes)) {
+            $data['message'] = 'กรุณาแนบไฟล์รูปภาพเท่านั้น (JPG, PNG)';
+            return response()->json($data);
+        }
+
+        if ($file->getSize() > 5 * 1024 * 1024) {
+            $data['message'] = 'ขนาดไฟล์ใหญ่เกินไป (สูงสุด 5MB)';
+            return response()->json($data);
+        }
+
+        $filename = time() . '_table_' . $tableId . '_' . $file->getClientOriginalName();
+        $path = $file->storeAs('slips', $filename, 'public');
+
+        // อัพเดทออเดอร์
+        $updatedCount = 0;
+        foreach ($orders as $orderData) {
+            $orderModel = Orders::find($orderData['order_id']);
+            if ($orderModel) {
+                $orderModel->status = 4; 
+                $orderModel->image = $path;
+                if ($remark) {
+                    $orderModel->remark = $remark;
+                }
+                $orderModel->save();
+                $updatedCount++;
+            }
+        }
+
+        if ($updatedCount === 0) {
+            $data['message'] = 'ไม่สามารถอัพเดทออเดอร์ได้';
+            return response()->json($data);
+        }
+
+        // ส่งการแจ้งเตือน
+        $this->sendPaymentNotification($tableId, $orders);
+
+        session()->forget(['orders', 'table_id']);
+
+        $data = [
+            'status' => true,
+            'message' => 'แนบสลิปเรียบร้อยแล้ว รอการตรวจสอบจากเจ้าหน้าที่',
+        ];
+
     } catch (\Exception $e) {
+        \Log::error('ConfirmPay Error: ' . $e->getMessage());
         $data['message'] = 'เกิดข้อผิดพลาด: ' . $e->getMessage();
     }
 
     return response()->json($data);
 }
+
 private function sendPaymentNotification($tableId, $orders)
 {
     try {
@@ -346,22 +421,20 @@ private function sendPaymentNotification($tableId, $orders)
         
         $totalAmount = collect($orders)->sum('total');
         
-        // สร้างข้อความแจ้งเตือน
-        $message = "💳 มีการชำระเงินจาก โต้ะ {$tableNumber}";
-        $subMessage = "ยอดเงิน: " . number_format($totalAmount, 2) . " บาท";
-        
-       
-        $this->saveNotification([
-            'type' => 'payment',
-            'table_id' => $tableId,
-            'table_number' => $tableNumber,
-            'message' => $message,
-            'sub_message' => $subMessage,
-            'amount' => $totalAmount,
-            'order_count' => count($orders),
-            'is_read' => false,
-            'created_at' => now()
-        ]);
+        if (Schema::hasTable('notifications')) {
+            \DB::table('notifications')->insert([
+                'type' => 'payment',
+                'table_id' => $tableId,
+                'table_number' => $tableNumber,
+                'message' => "💳 มีการชำระเงินจาก โต้ะ {$tableNumber}",
+                'sub_message' => "ยอดเงิน: " . number_format($totalAmount, 2) . " บาท",
+                'amount' => $totalAmount,
+                'order_count' => count($orders),
+                'is_read' => false,
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+        }
         
     } catch (\Exception $e) {
         \Log::error('Payment notification error: ' . $e->getMessage());
