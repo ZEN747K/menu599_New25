@@ -241,6 +241,11 @@ Route::middleware(['role:admin'])->group(function () {
     Route::post('/admin/order/confirm-slip-payment', [Admin::class, 'confirmSlipPayment'])->name('confirmSlipPayment');
     Route::post('/admin/order/reject-slip-payment', [Admin::class, 'rejectSlipPayment'])->name('rejectSlipPayment');
     Route::get('/admin/order/printReceiptFromOrder/{id}', [Admin::class, 'printReceiptFromOrder'])->name('printReceiptFromOrder');
+    //โต้ะ
+    Route::post('/admin/table/check-exists', [Table::class, 'checkTableExists'])->name('checkTableExists');
+    Route::get('/admin/table/statistics', [Table::class, 'getTableStatistics'])->name('getTableStatistics');
+    Route::get('/admin/table/download-qr/{id}', [Table::class, 'downloadQRCode'])->name('downloadQRCode');
+    Route::post('/admin/table/search', [Table::class, 'searchTables'])->name('searchTables');
 
 });
 });
