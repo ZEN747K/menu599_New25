@@ -1276,5 +1276,39 @@ private function getPaymentTotalsByType($type, $period = 'day', $date = null)
     }
     
     return (object)['total' => $payTotal];
+
+}
+    public function getNotifications()
+{
+    $notifications = \DB::table('notifications')
+        ->where('is_read', false)
+        ->orderBy('created_at', 'desc')
+        ->limit(10)
+        ->get();
+    
+    return response()->json([
+        'status' => true,
+        'data' => $notifications,
+        'count' => $notifications->count()
+    ]);
+}
+public function markNotificationAsRead(Request $request)
+{
+    $id = $request->input('id');
+    
+    \DB::table('notifications')
+        ->where('id', $id)
+        ->update(['is_read' => true]);
+    
+    return response()->json(['status' => true]);
+}
+
+public function markAllNotificationsAsRead()
+{
+    \DB::table('notifications')
+        ->where('is_read', false)
+        ->update(['is_read' => true]);
+    
+    return response()->json(['status' => true]);
 }
 }

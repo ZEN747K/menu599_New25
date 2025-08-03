@@ -290,49 +290,87 @@ class Main extends Controller
     }
     
     public function confirmPay(Request $request)
-    {
-        $data = [
-            'status' => false,
-            'message' => 'สั่งออเดอร์ไม่สำเร็จ',
-        ];
-        $orderData = $request->input('orderData');
-        $remark = $request->input('remark');
-        $request->validate([
-            'silp' => 'required|image|mimes:jpeg,png|max:2048',
-        ]);
-        $item = array();
-        $total = 0;
+{
+    $data = [
+        'status' => false,
+        'message' => 'ไม่สามารถแนบสลิปได้',
+    ];
 
-        if (session('table_id')) {
-            $order = Orders::where('table_id', session('table_id'))->whereIn('status', [1, 2])->get();
-            foreach ($order as $value) {
-                $value->status = 4;
-                if ($request->hasFile('silp')) {
-                    $file = $request->file('silp');
-                    $filename = time() . '_' . $file->getClientOriginalName();
-                    $path = $file->storeAs('image', $filename, 'public');
-                    $value->image = $path;
-                }
-                if ($value->save()) {
-                    foreach ($item as $rs) {
-                        $orderdetail = new OrdersDetails();
-                        $orderdetail->order_id = $order->id;
-                        $orderdetail->menu_id = $rs['id'];
-                        $orderdetail->option_id = $rs['option'];
-                        $orderdetail->quantity = $rs['qty'];
-                        $orderdetail->price = $rs['price'];
-                        $orderdetail->save();
+    try {
+        $orders = session('orders', []);
+        $tableId = session('table_id');
+        $remark = $request->input('remark');
+        
+        if (empty($orders)) {
+            $data['message'] = 'ไม่พบรายการสั่งอาหาร';
+            return response()->json($data);
+        }
+
+        if ($request->hasFile('silp')) {
+            $file = $request->file('silp');
+            $filename = time() . '_' . $file->getClientOriginalName();
+            $path = $file->storeAs('slips', $filename, 'public');
+
+            foreach ($orders as $order) {
+                $orderModel = Orders::find($order['order_id']);
+                if ($orderModel) {
+                    $orderModel->status = 4; 
+                    $orderModel->image = $path;
+                    if ($remark) {
+                        $orderModel->remark = $remark;
                     }
+                    $orderModel->save();
                 }
             }
-            event(new OrderCreated(['📦 มีออเดอร์ใหม่']));
+
+            $this->sendPaymentNotification($tableId, $orders);
+
+            session()->forget(['orders', 'table_id']);
+
             $data = [
                 'status' => true,
-                'message' => 'สั่งออเดอร์เรียบร้อยแล้ว',
+                'message' => 'แนบสลิปเรียบร้อยแล้ว รอการตรวจสอบจากเจ้าหน้าที่',
             ];
         }
-        return response()->json($data);
+    } catch (\Exception $e) {
+        $data['message'] = 'เกิดข้อผิดพลาด: ' . $e->getMessage();
     }
+
+    return response()->json($data);
+}
+private function sendPaymentNotification($tableId, $orders)
+{
+    try {
+        $table = Table::find($tableId);
+        $tableNumber = $table ? $table->table_number : 'ไม่ระบุ';
+        
+        $totalAmount = collect($orders)->sum('total');
+        
+        // สร้างข้อความแจ้งเตือน
+        $message = "💳 มีการชำระเงินจาก โต้ะ {$tableNumber}";
+        $subMessage = "ยอดเงิน: " . number_format($totalAmount, 2) . " บาท";
+        
+       
+        $this->saveNotification([
+            'type' => 'payment',
+            'table_id' => $tableId,
+            'table_number' => $tableNumber,
+            'message' => $message,
+            'sub_message' => $subMessage,
+            'amount' => $totalAmount,
+            'order_count' => count($orders),
+            'is_read' => false,
+            'created_at' => now()
+        ]);
+        
+    } catch (\Exception $e) {
+        \Log::error('Payment notification error: ' . $e->getMessage());
+    }
+}
+private function saveNotification($data)
+{
+    \DB::table('notifications')->insert($data);
+}
 
     /**
      * ตรวจสอบสถานะเมนู real-time
