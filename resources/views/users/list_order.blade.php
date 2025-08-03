@@ -225,49 +225,60 @@ $config = Config::first();
     </div>
 </div>
 <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        const confirmButton = document.getElementById('confirm-order-btn');
+   document.addEventListener("DOMContentLoaded", function() {
+    const confirmButton = document.getElementById('confirm-order-btn');
 
-        confirmButton.addEventListener('click', function(event) {
-            event.preventDefault();
+    confirmButton.addEventListener('click', function(event) {
+        event.preventDefault();
 
-            const fileInput = document.getElementById('silp');
-            const file = fileInput.files[0];
+        const fileInput = document.getElementById('silp');
+        const file = fileInput.files[0];
 
-            if (!file) {
-                Swal.fire("กรุณาแนบสลิปก่อน", "", "warning");
-                return;
-            }
+        if (!file) {
+            Swal.fire("กรุณาแนบสลิปก่อน", "", "warning");
+            return;
+        }
 
-            Swal.showLoading();
-            const formData = new FormData();
-            formData.append('remark', $('#remark').val());
-            formData.append('silp', file);
+        Swal.showLoading();
+        const formData = new FormData();
+        formData.append('remark', $('#remark').val());
+        formData.append('silp', file);
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        const tableParam = urlParams.get('table');
+        if (tableParam) {
+            formData.append('table_id', tableParam);
+        }
 
-            $.ajax({
-                type: "POST",
-                url: "{{ route('confirmPay') }}",
-                data: formData,
-                processData: false,
-                contentType: false,
-                headers: {
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                },
-                success: function(response) {
-                    if (response.status == true) {
-                        Swal.fire(response.message, "", "success");
-                        setTimeout(() => {
+        $.ajax({
+            type: "POST",
+            url: "{{ route('confirmPay') }}",
+            data: formData,
+            processData: false,
+            contentType: false,
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            success: function(response) {
+                if (response.status == true) {
+                    Swal.fire(response.message, "", "success");
+                    setTimeout(() => {
+                        if (tableParam) {
+                            window.location.href = "{{ route('listorder') }}?table=" + tableParam;
+                        } else {
                             location.reload();
-                        }, 3000);
-                    } else {
-                        Swal.fire(response.message, "", "error");
-                    }
-                },
-                error: function(xhr) {
-                    Swal.fire("เกิดข้อผิดพลาด", xhr.responseText, "error");
+                        }
+                    }, 3000);
+                } else {
+                    Swal.fire(response.message, "", "error");
                 }
-            });
+            },
+            error: function(xhr) {
+                console.log('Error response:', xhr.responseText);
+                Swal.fire("เกิดข้อผิดพลาด", xhr.responseText, "error");
+            }
         });
     });
+});
 </script>
 @endsection
