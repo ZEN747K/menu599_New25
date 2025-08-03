@@ -254,7 +254,7 @@ class Main extends Controller
         }
     }
     
-    return view('users.list_order', compact('orderlist', 'qr_code'));
+    return view('users.list_page', compact('orderlist', 'qr_code'));
 }
 
     public function listorderDetails(Request $request)
