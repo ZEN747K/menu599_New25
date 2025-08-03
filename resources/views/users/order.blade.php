@@ -86,42 +86,56 @@ $config = Config::first();
             <div class="card-body">
                 <div class="list-group">
                     <?php $total = 0; ?>
-                    @foreach($orderlist as $rs)
-                    <div class="list-group-item list-group-item-action mb-2 p-4 rounded border bg-light">
-                        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start">
-                            <div class="mb-3 mb-md-0">
-                                <h5 class="mb-1 fw-bold">เลขออเดอร์ #{{$rs->id}}</h5>
-                                <div class="mb-2 d-flex">
-                                    <div class="me-2 fw-bold" style="min-width: 110px;">สถานะออเดอร์:</div>
-                                    <div class="text-muted">
-                                        <?php switch ($rs->status) {
-                                            case 1:
-                                                echo 'กำลังทำอาหาร';
-                                                break;
-                                            case 2:
-                                                echo 'เสิร์ฟออเดอร์แล้ว';
-                                                break;
-                                            case 3:
-                                                echo 'จัดส่งสำเร็จ';
-                                                break;
-                                            default:
-                                                break;
-                                        } ?>
+                    @if(is_array($orderlist) || is_object($orderlist))
+                        @foreach($orderlist as $rs)
+                        <div class="list-group-item list-group-item-action mb-2 p-4 rounded border bg-light">
+                            <div class="d-flex flex-column flex-md-row justify-content-between align-items-start">
+                                <div class="mb-3 mb-md-0">
+                                    <h5 class="mb-1 fw-bold">เลขออเดอร์ #{{$rs->id}}</h5>
+                                    <div class="mb-2 d-flex">
+                                        <div class="me-2 fw-bold" style="min-width: 110px;">สถานะออเดอร์:</div>
+                                        <div class="text-muted">
+                                            <?php switch ($rs->status) {
+                                                case 1:
+                                                    echo 'กำลังทำอาหาร';
+                                                    break;
+                                                case 2:
+                                                    echo 'เสิร์ฟออเดอร์แล้ว';
+                                                    break;
+                                                case 3:
+                                                    echo 'จัดส่งสำเร็จ';
+                                                    break;
+                                                case 4:
+                                                    echo 'รอตรวจสอบการชำระเงิน';
+                                                    break;
+                                                case 5:
+                                                    echo 'ชำระเงินแล้ว';
+                                                    break;
+                                                default:
+                                                    echo 'ไม่ระบุสถานะ';
+                                                    break;
+                                            } ?>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                            <?php $total = $total + $rs->total; ?>
-                            <div class="text-end mt-3 mt-md-0">
-                                <small class="text-muted">ราคา: {{ number_format($rs->total ?? 0, 2) }} บาท</small><br>
-                                <button data-id="{{$rs->id}}" type="button" class="btn btn-sm btn-success modalShow">
-                                    ดูรายละเอียดออเดอร์
-                                </button>
+                                <?php $total = $total + ($rs->total ?? 0); ?>
+                                <div class="text-end mt-3 mt-md-0">
+                                    <small class="text-muted">ราคา: {{ number_format($rs->total ?? 0, 2) }} บาท</small><br>
+                                    <button data-id="{{$rs->id}}" type="button" class="btn btn-sm btn-success modalShow">
+                                        ดูรายละเอียดออเดอร์
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    @endforeach
+                        @endforeach
+                    @endif
                 </div>
-                @if($orderlist->isEmpty())
+                @if(
+                    (is_array($orderlist) && empty($orderlist)) || 
+                    (is_object($orderlist) && method_exists($orderlist, 'isEmpty') && $orderlist->isEmpty()) ||
+                    (is_object($orderlist) && method_exists($orderlist, 'count') && $orderlist->count() == 0) ||
+                    (!is_array($orderlist) && !is_object($orderlist))
+                )
                 <div class="text-center text-muted my-2">
                     ไม่มีรายการอาหารที่สั่ง
                 </div>
@@ -157,7 +171,7 @@ $config = Config::first();
                 @csrf
                 <div class="row g-3 mb-3">
                     <div class="col-md-12">
-                        <?= $qr_code ?>
+                        {!! $qr_code ?? '' !!}
                     </div>
                 </div>
                 <div class="row g-3 mb-3">

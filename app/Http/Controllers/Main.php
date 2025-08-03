@@ -215,7 +215,7 @@ class Main extends Controller
         event(new OrderCreated(['ลูกค้าเรียกจากโต้ะที่ ' . session('table_id')]));
     }
     
-    public function listorder()
+   public function listorder()
 {
     // ดึงข้อมูลออเดอร์จาก session หรือ database
     $tableId = session('table_id');
@@ -241,7 +241,17 @@ class Main extends Controller
     }
     
     $config = Config::first();
-    $total = $orderlist->sum('total');
+    
+    $total = 0;
+    if (!empty($orderlist)) {
+        if (is_array($orderlist)) {
+            foreach ($orderlist as $order) {
+                $total += $order->total ?? 0;
+            }
+        } else {
+            $total = $orderlist->sum('total');
+        }
+    }
     
     $qr_code = '';
     if ($config) {
@@ -254,7 +264,7 @@ class Main extends Controller
         }
     }
     
-    return view('users.list_page', compact('orderlist', 'qr_code'));
+    return view('users.order', compact('orderlist', 'qr_code'));
 }
 
     public function listorderDetails(Request $request)
