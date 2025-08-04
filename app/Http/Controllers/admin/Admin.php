@@ -32,25 +32,26 @@ class Admin extends Controller
         $data['ordermouth'] = $this->getCompletedOrdersTotal('month');
         $data['orderyear'] = $this->getCompletedOrdersTotal('year');
         
-        // คำนวณเงินสดและเงินโอo
+        // คำนวณเงินสดและเงินโอน
         $data['moneyDay'] = $this->getPaymentTotalsByType(0, 'day'); // เงินสด
         $data['transferDay'] = $this->getPaymentTotalsByType(1, 'day'); // เงินโอน + สลิป
 
         $data['delivery'] = Orders::whereIn('status', [3, 5])
             ->whereNotNull('table_id')
-            ->whereDay('created_at', date('d'))
+            ->whereDate('created_at', date('Y-m-d'))
             ->count();
     } else {
         $data['delivery_day'] = Orders::join('rider_sends', 'rider_sends.order_id', '=', 'orders.id')
             ->whereIn('orders.status', [3, 5])
             ->where('rider_id', session('user')->id)
-            ->whereDay('orders.created_at', date('d'))
+            ->whereDate('orders.created_at', date('Y-m-d'))
             ->count();
             
         $data['delivery_mouth'] = Orders::join('rider_sends', 'rider_sends.order_id', '=', 'orders.id')
             ->whereIn('orders.status', [3, 5])
             ->where('rider_id', session('user')->id)
             ->whereMonth('orders.created_at', date('m'))
+            ->whereYear('orders.created_at', date('Y'))
             ->count();
     }
     
@@ -75,7 +76,7 @@ class Admin extends Controller
     $item_mouth = array();
     for ($i = 1; $i < 13; $i++) {
         $query = $this->getCompletedOrdersTotal('month', $i);
-        $item_mouth[] = $query->total;
+        $item_mouth[] = $query->total ?? 0; 
     }
     
     $data['item_menu'] = $item_menu;
