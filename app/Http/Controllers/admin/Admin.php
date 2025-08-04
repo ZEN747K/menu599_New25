@@ -21,7 +21,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use PromptPayQR\Builder;
-
+use Illuminate\Support\Facades\Schema;
 class Admin extends Controller
 {
   public function dashboard()
@@ -292,49 +292,148 @@ class Admin extends Controller
         return redirect()->route('config')->with('error', 'ไม่สามารถบันทึกข้อมูลได้');
     }
 
-    public function confirm_pay(Request $request)
-    {
-        $data = [
-            'status' => false,
-            'message' => 'ชำระเงินไม่สำเร็จ',
-        ];
-        $id = $request->input('id');
-        if ($id) {
-            $total = DB::table('orders as o')
-                ->select(
-                    'o.table_id',
-                    DB::raw('SUM(o.total) as total'),
-                )
-                ->whereNotNull('table_id')
-                ->groupBy('o.table_id')
-                ->where('table_id', $id)
-                ->whereIn('status', [1, 2])
-                ->first();
+  public function confirm_pay(Request $request)
+{
+    $data = [
+        'status' => false,
+        'message' => 'ชำระเงินไม่สำเร็จ',
+    ];
+    
+    $id = $request->input('id');
+    $paymentType = $request->input('value'); 
+    $receivedAmount = $request->input('received_amount', null);
+    $changeAmount = $request->input('change_amount', null);
+    
+    if ($id) {
+        $total = DB::table('orders as o')
+            ->select(
+                'o.table_id',
+                DB::raw('SUM(o.total) as total'),
+            )
+            ->whereNotNull('table_id')
+            ->groupBy('o.table_id')
+            ->where('table_id', $id)
+            ->whereIn('status', [1, 2])
+            ->first();
+            
+        if (!$total) {
+            $data['message'] = 'ไม่พบข้อมูลออเดอร์';
+            return response()->json($data);
+        }
+        
+        // ตรวจสอบการชำระเงินสด
+        if ($paymentType == 0 && $receivedAmount < $total->total) {
+            $data['message'] = 'จำนวนเงินที่รับมาไม่เพียงพอ';
+            return response()->json($data);
+        }
+        
+        try {
+            DB::beginTransaction();
+            
             $pay = new Pay();
             $pay->payment_number = $this->generateRunningNumber();
             $pay->table_id = $id;
             $pay->total = $total->total;
-            $pay->is_type = $request->input('value');
+            $pay->is_type = $paymentType;
+            
+            // เพิ่มข้อมูลเงินสดและเงินทอน
+            if ($paymentType == 0) {
+                $pay->received_amount = $receivedAmount;
+                $pay->change_amount = $changeAmount;
+            }
+            
             if ($pay->save()) {
-                $order = Orders::where('table_id', $id)->whereIn('status', [1, 2])->get();
-                foreach ($order as $rs) {
-                    $rs->status = 3;
-                    if ($rs->save()) {
+                $orders = Orders::where('table_id', $id)->whereIn('status', [1, 2])->get();
+                
+                foreach ($orders as $order) {
+                    $order->status = 3;
+                    if ($order->save()) {
                         $paygroup = new PayGroup();
                         $paygroup->pay_id = $pay->id;
-                        $paygroup->order_id = $rs->id;
+                        $paygroup->order_id = $order->id;
                         $paygroup->save();
                     }
                 }
+                
+                DB::commit();
+                
+                $message = 'ชำระเงินเรียบร้อยแล้ว';
+                
+                if ($paymentType == 0) {
+                    $message .= '<br>เลขที่ใบเสร็จ: ' . $pay->payment_number;
+                    $message .= '<br>ยอดที่ต้องชำระ: ' . number_format($total->total, 2) . ' ฿';
+                    $message .= '<br>เงินที่รับมา: ' . number_format($receivedAmount, 2) . ' ฿';
+                    
+                    if ($changeAmount > 0) {
+                        $message .= '<br>เงินทอน: ' . number_format($changeAmount, 2) . ' ฿';
+                    } else {
+                        $message .= '<br>จ่ายพอดี';
+                    }
+                }
+                
                 $data = [
                     'status' => true,
-                    'message' => 'ชำระเงินเรียบร้อยแล้ว',
+                    'message' => $message,
+                    'payment_info' => [
+                        'payment_number' => $pay->payment_number,
+                        'total' => $total->total,
+                        'received_amount' => $receivedAmount,
+                        'change_amount' => $changeAmount,
+                        'payment_type' => $paymentType
+                    ]
                 ];
+                
+                $this->sendPaymentNotification($id, $pay, $paymentType);
             }
+            
+        } catch (\Exception $e) {
+            DB::rollback();
+            \Log::error('Payment Error: ' . $e->getMessage());
+            $data['message'] = 'เกิดข้อผิดพลาดในการบันทึกข้อมูล: ' . $e->getMessage();
         }
-        return response()->json($data);
     }
+    
+    return response()->json($data);
+}
 
+private function sendPaymentNotification($tableId, $pay, $paymentType)
+{
+    try {
+        $table = Table::find($tableId);
+        $tableNumber = $table ? $table->table_number : 'ไม่ระบุ';
+        
+        $paymentTypeText = $paymentType == 0 ? 'เงินสด' : 'โอนเงิน';
+        
+        $message = "💰 ชำระเงินจาก โต้ะ {$tableNumber}";
+        $subMessage = "ประเภท: {$paymentTypeText} | ยอดเงิน: " . number_format($pay->total, 2) . " บาท";
+        
+        if ($paymentType == 0 && isset($pay->change_amount) && $pay->change_amount > 0) {
+            $subMessage .= " | เงินทอน: " . number_format($pay->change_amount, 2) . " บาท";
+        }
+        
+        if (Schema::hasTable('notifications')) {
+            DB::table('notifications')->insert([
+                'type' => 'payment',
+                'table_id' => $tableId,
+                'table_number' => $tableNumber,
+                'message' => $message,
+                'sub_message' => $subMessage,
+                'amount' => $pay->total,
+                'payment_type' => $paymentType,
+                'received_amount' => $pay->received_amount ?? null,
+                'change_amount' => $pay->change_amount ?? null,
+                'is_read' => false,
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+        }
+        
+        event(new OrderCreated([$message . " - " . $subMessage]));
+        
+    } catch (\Exception $e) {
+        \Log::error('Payment notification error: ' . $e->getMessage());
+    }
+}
     public function confirm_pay_rider(Request $request)
     {
         $data = [
@@ -435,9 +534,7 @@ class Admin extends Controller
         return view('order', $data);
     }
 
-    /**
-     * รายการชำระเงินแล้ว - รวม Pay table และ Orders table
-     */
+  
     public function ListOrderPay()
     {
         $data = [
@@ -446,19 +543,14 @@ class Admin extends Controller
             'data' => []
         ];
 
-        // ดึงรายการชำระเงินจาก Pay table (ชำระหน้าร้าน)
         $payList = Pay::orderBy('id', 'desc')->get();
 
-        // ดึงรายการที่แนบสลิปจาก Orders table (ชำระออนไลน์)
         $orderList = Orders::whereIn('status', [4, 5])
             ->orderBy('id', 'desc')
             ->get();
 
         $info = [];
 
-    // ในฟังก์ชัน ListOrderPay() แก้ไขส่วน action buttons
-
-// รายการจาก Pay table
 foreach ($payList as $pay) {
     $paymentType = $pay->is_type == 0 ? 'เงินสด' : 'โอนเงิน';
     $paymentClass = 'badge bg-success';
