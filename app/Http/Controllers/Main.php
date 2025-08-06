@@ -35,7 +35,7 @@ class Main extends Controller
         if ($table_id) {
             session(['table_id' => $table_id]);
         }
-        
+        // Test
         // ดึงโปรโมชั่นที่เปิดใช้งาน
         $promotion = Promotion::where('is_status', 1)->get();
         
