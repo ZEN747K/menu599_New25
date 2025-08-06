@@ -335,6 +335,7 @@
             <!-- เนื้อหาจะถูกสร้างโดย JavaScript -->
         </div>
     </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qz-tray/2.1.5/qz-tray.js"></script>
 
     <script>
         const jsonData = {!! $jsonData !!};
@@ -716,12 +717,27 @@
             
             return html;
         }
+        // ใช้ QZ Tray สำหรับการพิมพ์แบบไม่ต้องยืนยัน
+        function printViaQZTray() {
+            return qz.websocket.connect()
+                .then(() => qz.printers.getDefault())
+                .then(printer => {
+                    const config = qz.configs.create(printer);
+                    const dataToPrint = [{ type: 'html', format: 'plain', data: document.documentElement.outerHTML }];
+                    return qz.print(config, dataToPrint);
+                });
+        }
         
         // ฟังก์ชันจัดการการพิมพ์
         function handlePrint() {
             if (isMobileApp()) {
                 console.log('Mobile app detected, using JSBridge');
                 printViaJSBridge(data);
+            } else if (window.qz) {
+                printViaQZTray().catch(err => {
+                    console.warn('QZ Tray failed, falling back to window.print', err);
+                    window.print();
+                });
             } else {
                 console.log('Web browser detected, using window.print');
                 window.print();
@@ -732,13 +748,19 @@
             console.log('DOM loaded, rendering content...');
             renderContent();
             
-            // Auto print เฉพาะกรณีที่ไม่ได้อยู่ใน iframe และเป็น order type
-            if (!isInIframe && (data.type === 'order_admin' || data.type === 'order_cook')) {
-                console.log('Auto print triggered for type:', data.type);
-                setTimeout(function() {
-                    console.log('Calling handlePrint()');
-                    handlePrint();
-                }, 1000);
+             if (!isInIframe) {
+                if (data.type === 'order_cook') {
+                    setTimeout(function() {
+                        handlePrint();
+                        setTimeout(function() {
+                            window.location.href = "{{ route('adminorder') }}";
+                        }, 1000);
+                    }, 3000);
+                } else if (data.type === 'order_admin') {
+                    setTimeout(function() {
+                        handlePrint();
+                    }, 1000);
+                }
             }
         });
         

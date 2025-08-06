@@ -17,7 +17,8 @@ class Orders extends Model
         'remark',
         'is_pay',
         'is_type',
-        'image'
+        'image',
+        'is_print_cook'
     ];
 
     // เพิ่ม relationship นี้
