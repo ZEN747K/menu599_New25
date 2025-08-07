@@ -106,6 +106,31 @@
     <script src="{{asset('assets/js/main.js')}}"></script>
     <script src="{{asset('assets/js/dashboards-analytics.js')}}"></script>
     <script async defer src="https://buttons.github.io/buttons.js"></script>
+    <script>
+        function checkNewOrders() {
+            fetch("{{ route('checkNewOrders') }}")
+                .then(response => response.json())
+                .then(res => {
+                    if (res.status) {
+                        window.open('/admin/order/printOrderAdminCook/' + res.table_id, '_blank');
+                    }
+                })
+                .catch(err => console.error(err));
+        }
+
+        setInterval(checkNewOrders, 5000);
+
+        window.addEventListener('message', function(e) {
+            if (e.data === 'cook-print-done') {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'ปริ้น Order ในครัวแบบออโต้เรียบร้อยแล้ว',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+            }
+        });
+    </script>
 </body>
 
 </html>

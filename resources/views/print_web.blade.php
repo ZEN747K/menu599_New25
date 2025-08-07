@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Print Order</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qz-tray/2.2.4/qz-tray.min.js" integrity="sha512-W1YQ2YsmEpRhtXZW8DqRLVQjaxAg/P6MqxsVXni4eWh05rq6ArlTc95xJMu38xpv8uKXu95syEHCqB6f+GO6wg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <style>
         @media print {
             @page {
@@ -335,7 +336,6 @@
             <!-- เนื้อหาจะถูกสร้างโดย JavaScript -->
         </div>
     </div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qz-tray/2.1.5/qz-tray.js"></script>
 
     <script>
         const jsonData = {!! $jsonData !!};
@@ -373,6 +373,22 @@
                 console.warn('JSBridge not available, falling back to window.print');
                 window.print();
             }
+        }
+        // ตั้งค่าเริ่มต้นสำหรับ QZ Tray (สำหรับการพิมพ์อัตโนมัติบนเว็บ)
+        if (window.qz) {
+            qz.security.setCertificatePromise(function(resolve, reject) { resolve(); });
+            qz.security.setSignaturePromise(function(toSign) {
+                return function(resolve, reject) { resolve(); };
+            });
+        }
+
+        function printViaQZ(html) {
+            return qz.websocket.connect()
+                .then(() => qz.printers.getDefault())
+                .then(printer => {
+                    const cfg = qz.configs.create(printer);
+                    return qz.print(cfg, [{ type: 'html', format: 'plain', data: html }]);
+                });
         }
         
         if (isInIframe) {
@@ -717,30 +733,24 @@
             
             return html;
         }
-        // ใช้ QZ Tray สำหรับการพิมพ์แบบไม่ต้องยืนยัน
-        function printViaQZTray() {
-            return qz.websocket.connect()
-                .then(() => qz.printers.getDefault())
-                .then(printer => {
-                    const config = qz.configs.create(printer);
-                    const dataToPrint = [{ type: 'html', format: 'plain', data: document.documentElement.outerHTML }];
-                    return qz.print(config, dataToPrint);
-                });
-        }
         
         // ฟังก์ชันจัดการการพิมพ์
         function handlePrint() {
             if (isMobileApp()) {
                 console.log('Mobile app detected, using JSBridge');
                 printViaJSBridge(data);
+                return Promise.resolve();
             } else if (window.qz) {
-                printViaQZTray().catch(err => {
-                    console.warn('QZ Tray failed, falling back to window.print', err);
+                console.log('QZ Tray detected, printing silently');
+                const html = `<html><head><meta charset="UTF-8"></head><body>${document.querySelector('.print-wrapper').innerHTML}</body></html>`;
+                return printViaQZ(html).catch(err => {
+                    console.error('QZ Tray error', err);
                     window.print();
                 });
             } else {
                 console.log('Web browser detected, using window.print');
                 window.print();
+                return Promise.resolve();
             }
         }
         
@@ -748,15 +758,24 @@
             console.log('DOM loaded, rendering content...');
             renderContent();
             
-             if (!isInIframe) {
+            // Auto print handling
+            if (!isInIframe) {
                 if (data.type === 'order_cook') {
+                    console.log('Auto print triggered for kitchen');
                     setTimeout(function() {
-                        handlePrint();
-                        setTimeout(function() {
-                            window.location.href = "{{ route('adminorder') }}";
-                        }, 1000);
-                    }, 3000);
+                        handlePrint().finally(function() {
+                            setTimeout(function() {
+                                if (window.opener) {
+                                    window.opener.postMessage('cook-print-done', '*');
+                                    window.close();
+                                } else {
+                                    window.location.href = '/admin/order';
+                                }
+                            }, 1000);
+                        });
+                    }, 3000); // show for 3 seconds before printing
                 } else if (data.type === 'order_admin') {
+                    console.log('Auto print triggered for admin');
                     setTimeout(function() {
                         handlePrint();
                     }, 1000);

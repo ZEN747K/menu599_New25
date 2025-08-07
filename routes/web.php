@@ -105,7 +105,6 @@ Route::middleware(['role:admin'])->group(function () {
     Route::post('/admin/order/confirm_pay_rider', [Admin::class, 'confirm_pay_rider'])->name('confirm_pay_rider');
     Route::post('/admin/order/confirm_rider', [Admin::class, 'confirm_rider'])->name('confirm_rider');
     Route::get('/admin/order/printReceipt/{id}', [Admin::class, 'printReceipt'])->name('printReceipt');
-    Route::post('/admin/order/checkNewOrders', [Admin::class, 'checkNewOrders'])->name('checkNewOrders');
     Route::get('/admin/order/printReceiptfull/{id}', [Admin::class, 'printReceiptfull'])->name('printReceiptfull');
     Route::get('/admin/order_rider', [Admin::class, 'order_rider'])->name('order_rider');
     Route::post('/admin/order/ListOrderRider', [Admin::class, 'ListOrderRider'])->name('ListOrderRider');
@@ -217,6 +216,7 @@ Route::middleware(['role:admin'])->group(function () {
     Route::get('/admin/order/printOrderRider/{id}', [Memberorder::class, 'printOrderRider'])->name('printOrderRider');
     Route::get('/admin/order/printOrderAdmin/{id}', [Admin::class, 'printOrderAdmin'])->name('printOrderAdmin');
     Route::get('/admin/order/printOrderAdminCook/{id}', [Admin::class, 'printOrderAdminCook'])->name('printOrderAdminCook');
+    Route::get('/admin/order/checkNewOrders', [Admin::class, 'checkNewOrders'])->name('checkNewOrders');
     Route::middleware(['role:admin'])->group(function () {
     // เมนูอาหาร
     Route::get('/admin/menu', [Menu::class, 'menu'])->name('menu');

@@ -524,7 +524,6 @@
                 },
                 ]
             });
-            setInterval(checkNewOrders, 5000);
         });
 
         // ฟังก์ชันตรวจสอบว่ามาจาก mobile app หรือไม่
@@ -534,20 +533,6 @@
             const device = document.querySelector('meta[name="app-device"]')?.getAttribute('content');
 
             return channel === 'pos-app' && (device === 'android' || device === 'ios');
-        }
-        function checkNewOrders() {
-            $.ajax({
-                url: "{{ route('checkNewOrders') }}",
-                type: "post",
-                headers: {
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                },
-                success: function (res) {
-                    if (res.status) {
-                        window.location.href = "{{ url('/admin/order/printOrderAdminCook') }}/" + res.table_id;
-                    }
-                }
-            });
         }
 
         // ดูรูปสลิป

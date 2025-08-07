@@ -230,21 +230,16 @@ class Admin extends Controller
         return view('print_web', ['jsonData' => json_encode($data)]);
     }
 
-    public function printOrderAdminCook(Request $request, $table_id)
+    public function printOrderAdminCook($table_id)
     {
         $config = Config::first();
-        $query = Orders::where('table_id', $table_id)
-            ->whereIn('status', [1, 2]);
-
-        if (!$request->query('reprint')) {
-            $query->where('is_print_cook', 0);
-        }
-
-        $orders = $query->get();
-
-        if ($orders->isEmpty()) {
-            return redirect()->route('adminorder');
-        }
+        $orders = Orders::where('table_id', $table_id)
+            ->whereIn('status', [1, 2])
+            ->get();
+        // Update print flag for these orders
+        Orders::where('table_id', $table_id)
+            ->whereIn('status', [1, 2])
+            ->update(['is_print_cook' => 1]);
 
         $order_details = [];
         foreach ($orders as $order) {
@@ -252,9 +247,6 @@ class Admin extends Controller
                 ->with('menu', 'option.option')
                 ->get();
             $order_details = array_merge($order_details, $details->toArray());
-        }
-        if (!$request->query('reprint')) {
-            Orders::whereIn('id', $orders->pluck('id'))->update(['is_print_cook' => 1]);
         }
 
         $table = Table::find($table_id);
@@ -270,15 +262,19 @@ class Admin extends Controller
     }
     public function checkNewOrders()
     {
-        $order = Orders::where('status', 1)
-            ->where('is_print_cook', 0)
+        $order = Orders::where('is_print_cook', 0)
+            ->whereIn('status', [1, 2])
             ->orderBy('created_at')
             ->first();
 
         if ($order) {
+            Orders::where('table_id', $order->table_id)
+                ->where('is_print_cook', 0)
+                ->update(['is_print_cook' => 1]);
+
             return response()->json([
                 'status' => true,
-                'table_id' => $order->table_id
+                'table_id' => $order->table_id,
             ]);
         }
 
