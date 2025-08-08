@@ -4,789 +4,394 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Print Order</title>
+    <!-- QZ Tray (fallback ถ้ามี) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qz-tray/2.2.4/qz-tray.min.js" integrity="sha512-W1YQ2YsmEpRhtXZW8DqRLVQjaxAg/P6MqxsVXni4eWh05rq6ArlTc95xJMu38xpv8uKXu95syEHCqB6f+GO6wg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <style>
         @media print {
-            @page {
-                size: A4;
-                margin: 1cm;
-            }
-            body {
-                margin: 0;
-                padding: 0;
-                font-family: 'Courier New', monospace;
-                font-size: 14px;
-                line-height: 1.4;
-            }
-            .print-wrapper {
-                width: 100%;
-                max-width: none;
-                margin: 0;
-                padding: 0;
-            }
-            .no-print {
-                display: none !important;
-            }
+            @page { size: A4; margin: 1cm; }
+            body { margin: 0; padding: 0; font-family: 'Courier New', monospace; font-size: 14px; line-height: 1.4; }
+            .no-print { display: none !important; }
         }
-        
-        body {
-            font-family: 'Courier New', monospace;
-            font-size: 14px;
-            line-height: 1.4;
-            margin: 0;
-            padding: 0;
-            background-color: #f0f0f0;
-        }
-        
-        .print-wrapper {
-            width: 100%;
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: white;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-        }
-        
-        .header {
-            text-align: center;
-            border-bottom: 1px dashed #000;
-            padding-bottom: 10px;
-            margin-bottom: 10px;
-        }
-        
-        .shop-name {
-            font-size: 18px;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-        
-        .order-info {
-            margin-bottom: 10px;
-            border-bottom: 1px dashed #000;
-            padding-bottom: 10px;
-        }
-        
-        .order-info div {
-            text-align: center;
-            margin: 2px 0;
-        }
-        
-        .order-item {
-            margin-bottom: 10px;
-            padding: 3px 0;
-        }
-        
-        .item-name {
-            font-weight: bold;
-            text-align: center;
-            font-size: 16px;
-        }
-        
-        .item-option {
-            font-size: 14px;
-            margin-left: 10px;
-            color: #666;
-            text-align: center;
-        }
-        
-        .item-remark {
-            font-size: 14px;
-            margin-left: 10px;
-            color: #666;
-            font-style: italic;
-            text-align: center;
-        }
-        
-        .quantity-price {
-            text-align: center;
-            margin-top: 3px;
-            white-space: nowrap;
-            font-size: 15px;
-        }
-        
-        .total-section {
-            border-top: 1px dashed #000;
-            padding-top: 10px;
-            margin-top: 10px;
-        }
-        
-        .total-line {
-            text-align: center;
-            margin: 5px 0;
-            font-size: 16px;
-            white-space: nowrap;
-        }
-        
-        .total-line.main-total {
-            font-size: 18px;
-            font-weight: bold;
-            margin-top: 10px;
-        }
-        
-        .footer {
-            text-align: center;
-            margin-top: 15px;
-            padding-top: 10px;
-            border-top: 1px dashed #000;
-            font-size: 12px;
-        }
-        
-        /* ใบเสร็จแบบตาราง */
-        .receipt-header {
-            text-align: center;
-            margin-bottom: 20px;
-            border-bottom: 1px solid #000;
-            padding-bottom: 15px;
-        }
-        
-        .receipt-header h2 {
-            margin: 0 0 10px 0;
-            font-size: 20px;
-            font-weight: bold;
-        }
-        
-        .receipt-info {
-            font-size: 14px;
-            line-height: 1.4;
-        }
-        
-        .receipt-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 20px 0;
-            border: 1px solid #000;
-        }
-        
-        .receipt-table th,
-        .receipt-table td {
-            border: 1px solid #000;
-            padding: 8px;
-            text-align: left;
-        }
-        
-        .receipt-table th {
-            background-color: #f5f5f5;
-            font-weight: bold;
-            text-align: center;
-        }
-        
-        .item-header {
-            width: 50%;
-        }
-        
-        .qty-header {
-            width: 20%;
-            text-align: center;
-        }
-        
-        .price-header {
-            width: 30%;
-            text-align: center;
-        }
-        
-        .item-col {
-            vertical-align: top;
-        }
-        
-        .menu-name {
-            font-weight: bold;
-            margin-bottom: 3px;
-        }
-        
-        .menu-option {
-            font-size: 12px;
-            color: #666;
-            margin: 2px 0;
-        }
-        
-        .menu-remark {
-            font-size: 12px;
-            color: #666;
-            font-style: italic;
-            margin-top: 3px;
-        }
-        
-        .qty-col {
-            text-align: center;
-            vertical-align: top;
-            font-weight: bold;
-        }
-        
-        .price-col {
-            text-align: right;
-            vertical-align: top;
-            font-weight: bold;
-        }
-        
-        .receipt-total {
-            border: 1px solid #000;
-            border-top: 2px solid #000;
-            background-color: #f5f5f5;
-            padding: 10px;
-            margin-top: 10px;
-        }
-        
-        .total-line {
-            text-align: right;
-            font-size: 16px;
-            font-weight: bold;
-        }
-        
-        /* สำหรับออเดอร์ในครัว */
-        .cook-header {
-            background-color: #f0f0f0;
-            padding: 5px;
-            margin-bottom: 10px;
-            text-align: center;
-            font-weight: bold;
-        }
-        
-        .no-print {
-            display: block;
-            text-align: center;
-            padding: 20px;
-        }
-        
-        /* สำหรับตารางในออเดอร์ */
-        .order-table {
-            width: 100%;
-            margin: 10px 0;
-        }
-        
-        .order-table td {
-            padding: 5px;
-            vertical-align: top;
-            font-size: 14px;
-        }
-        
-        .order-table .item-col {
-            text-align: left;
-            width: 60%;
-        }
-        
-        .order-table .qty-col {
-            text-align: center;
-            width: 15%;
-        }
-        
-        .order-table .price-col {
-            text-align: right;
-            width: 25%;
-            white-space: nowrap;
-        }
-        
-        .order-table .total-row td {
-            border-top: 2px solid #000;
-            padding-top: 10px;
-            text-align: center;
-            font-weight: bold;
-            font-size: 18px;
-        }
-
-        /* สำหรับแสดงผลใน iframe */
-        .preview-mode {
-            background-color: #f8f9fa !important;
-            padding: 20px;
-        }
-
-        .preview-mode .print-wrapper {
-            margin: 0 auto;
-            background-color: white;
-            box-shadow: 0 0 15px rgba(0,0,0,0.1);
-            border-radius: 8px;
-            padding: 20px;
-            max-width: 600px;
-        }
-
-        .preview-mode .no-print {
-            display: block !important;
-            padding: 15px;
-            background-color: #e9ecef;
-            border-radius: 5px;
-            margin-bottom: 20px;
-        }
-
-        .preview-mode .no-print button {
-            margin: 0 5px;
-            padding: 8px 16px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-
-        .preview-mode .no-print button:first-child {
-            background-color: #007bff;
-            color: white;
-        }
-
-        .preview-mode .no-print button:last-child {
-            background-color: #6c757d;
-            color: white;
-        }
+        body { font-family: 'Courier New', monospace; font-size: 14px; line-height: 1.4; margin: 0; padding: 0; background-color: #f0f0f0; }
+        .print-wrapper { width: 100%; max-width: 600px; margin: 0 auto; padding: 20px; background-color: white; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        .no-print { display: block; text-align: center; padding: 10px 20px; }
+        .badge { display:inline-block; padding: 3px 8px; border-radius: 12px; font-size: 12px; vertical-align: middle; }
+        .badge.ok { background:#d4edda; color:#155724; }
+        .badge.err { background:#fdecea; color:#611a15; }
+        /* สำหรับ preview HTML จาก payload */
+        .pv-line { border-top: 1px dashed #000; margin: 8px 0; }
+        .pv-text { margin: 2px 0; }
+        .pv-text.bold { font-weight: bold; }
+        .pv-text.size2 { font-size: 18px; }
+        .pv-row { display: flex; width: 100%; }
+        .pv-col { padding: 2px 4px; box-sizing: border-box; }
+        .pv-right { text-align: right; }
+        .pv-center { text-align: center; }
+        .pv-table { border: 1px solid #000; border-collapse: collapse; width:100%; margin:10px 0; }
+        .pv-table th, .pv-table td { border:1px solid #000; padding:6px; }
+        .pv-table th { background:#f5f5f5; text-align:center; font-weight: bold; }
+        .preview-mode { background-color: #f8f9fa !important; padding: 20px; }
+        .preview-mode .print-wrapper { margin: 0 auto; background-color: white; box-shadow: 0 0 15px rgba(0,0,0,0.1); border-radius: 8px; padding: 20px; max-width: 600px; }
     </style>
 </head>
 <body>
     <div class="no-print">
-        <button onclick="handlePrint()" style="padding: 10px 20px; font-size: 14px;">พิมพ์</button>
+        <button id="btnPrint" style="padding: 10px 20px; font-size: 14px;">พิมพ์</button>
         <button onclick="window.close()" style="padding: 10px 20px; font-size: 14px; margin-left: 10px;">ปิด</button>
+        <span id="printerStatus" style="margin-left:12px;">สถานะเครื่องพิมพ์: <span class="badge err">ไม่ทราบ</span></span>
     </div>
 
     <div class="print-wrapper">
-        <div id="print-content">
-            <!-- เนื้อหาจะถูกสร้างโดย JavaScript -->
-        </div>
+        <div id="print-content"><!-- HTML preview จาก payload --></div>
     </div>
 
     <script>
+        // ====== รับข้อมูลจาก Blade ======
         const jsonData = {!! $jsonData !!};
         const data = jsonData;
-        
-        // ตรวจสอบว่าอยู่ใน iframe หรือไม่
+
+        // ====== Flag ความสามารถ (ตอนนี้ปิด image/qrcode/barcode ตาม requirement) ======
+        const FEATURE_IMAGE   = false;
+        const FEATURE_QRCODE  = false;
+        const FEATURE_BARCODE = false;
+
+        // ====== Utility ======
         const isInIframe = window.self !== window.top;
-        
-        // ตรวจสอบว่ามาจาก mobile app หรือไม่
-        function isMobileApp() {
-            // ตรวจสอบจาก user agent หรือ URL parameters ที่ส่งมา
-            const urlParams = new URLSearchParams(window.location.search);
-            const channel = urlParams.get('channel');
-            const device = urlParams.get('device');
-            
-            return channel === 'pos-app' && (device === 'android' || device === 'ios');
+
+        function formatPrice(n) {
+            const num = parseFloat(n || 0);
+            return num.toFixed(2);
         }
-        
-        // ฟังก์ชันสำหรับ print ผ่าน jsbridge
-        function printViaJSBridge(data) {
-            const printData = {
-                type: 'print_receipt',
-                data: data
-            };
-            
-            // ส่งข้อมูลไปยัง mobile app ผ่าน jsbridge
-            if (window.Android && window.Android.printReceipt) {
-                // Android
-                window.Android.printReceipt(JSON.stringify(printData));
-            } else if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.printReceipt) {
-                // iOS
-                window.webkit.messageHandlers.printReceipt.postMessage(printData);
-            } else {
-                // Fallback - ถ้าไม่มี jsbridge ให้ใช้ window.print
-                console.warn('JSBridge not available, falling back to window.print');
-                window.print();
+        function formatDateTime(dateTime) {
+            const date = new Date(dateTime);
+            return date.toLocaleDateString('th-TH') + ' ' + date.toLocaleTimeString('th-TH');
+        }
+        function groupOrderItems(orderItems) {
+            const grouped = {};
+            (orderItems || []).forEach(item => {
+                let key = `${item.menu ? item.menu.name : 'เมนู'}_${item.price}`;
+                if (item.option && item.option.length > 0) {
+                    const optionKeys = item.option.map(opt => opt?.option?.type || '').sort().join(',');
+                    key += `_${optionKeys}`;
+                }
+                if (item.remark) key += `_${item.remark}`;
+                if (grouped[key]) grouped[key].quantity = parseInt(grouped[key].quantity) + parseInt(item.quantity || 0);
+                else grouped[key] = { ...item, quantity: parseInt(item.quantity || 0) };
+            });
+            return Object.values(grouped);
+        }
+
+        // ====== JSBridge (ตามสเปค) ======
+        function getBridge() {
+            if (window.posRegisterInterface) return window.posRegisterInterface; 
+            if (window.webkit?.messageHandlers?.posRegisterInterface) return window.webkit.messageHandlers.posRegisterInterface; 
+            return null;
+        }
+        function sendCommand(command, payload = []) {
+            const message = { command, payload };
+            const bridge = getBridge();
+            if (!bridge) return false;
+
+            try {
+                if (typeof bridge.postMessage === 'function') {
+                    // iOS
+                    bridge.postMessage(JSON.stringify(message));
+                } else if (typeof bridge.sendRequest === 'function') {
+                    // Android
+                    bridge.sendRequest(JSON.stringify(message));
+                } else {
+                    return false;
+                }
+                return true;
+            } catch (e) {
+                console.error('sendCommand error:', e);
+                return false;
             }
         }
-        // ตั้งค่าเริ่มต้นสำหรับ QZ Tray (สำหรับการพิมพ์อัตโนมัติบนเว็บ)
-        if (window.qz) {
-            qz.security.setCertificatePromise(function(resolve, reject) { resolve(); });
-            qz.security.setSignaturePromise(function(toSign) {
-                return function(resolve, reject) { resolve(); };
+
+        // Native จะเรียกอันนี้กลับมา
+        // ตัวอย่าง: onPrinterStatusUpdate(true);
+        let PRINTER_ONLINE = null;
+        window.onPrinterStatusUpdate = function(online) {
+            PRINTER_ONLINE = !!online;
+            const el = document.getElementById('printerStatus');
+            if (!el) return;
+            el.innerHTML = 'สถานะเครื่องพิมพ์: ' + (PRINTER_ONLINE
+                ? '<span class="badge ok">พร้อมพิมพ์</span>'
+                : '<span class="badge err">ไม่พร้อม/ไม่เชื่อมต่อ</span>');
+        };
+
+        function checkPrinterStatus() {
+            // ถ้ามี Bridge ก็ส่ง STATUS_PRINTER
+            if (getBridge()) {
+                sendCommand("STATUS_PRINTER", []);
+                // NOTE: รอ native เรียก onPrinterStatusUpdate(true/false) กลับมา
+            } else {
+                // ไม่มี bridge
+                window.onPrinterStatusUpdate(false);
+            }
+        }
+
+        // ====== สร้าง payload ตามสเปค PRINT_START ======
+        function buildHeaderBlock(title, paymentNumber, createdAt) {
+            const items = [];
+            items.push({ type: "text", data: title, align: "center", bold: true, size: 2 });
+            items.push({ type: "newline" });
+            if (paymentNumber) items.push({ type: "text", data: `เลขที่ใบเสร็จ #${paymentNumber}`, align: "center" });
+            if (createdAt)     items.push({ type: "text", data: `วันที่: ${formatDateTime(createdAt)}`, align: "center" });
+            items.push({ type: "line", bold: true });
+            return items;
+        }
+
+        function buildTableHeader() {
+            return [{
+                type: "table",
+                columns: [
+                    { text: "สินค้า",   width: 60 },
+                    { text: "Qty",     width: 20 },
+                    { text: "ราคารวม", width: 20 }
+                ]
+            }];
+        }
+
+        function buildTableRowsFromOrder(order) {
+            const rows = [];
+            const groupedItems = groupOrderItems(order);
+            groupedItems.forEach(it => {
+                const total = parseFloat(it.price || 0) * parseInt(it.quantity || 0);
+                rows.push({
+                    type: "table",
+                    columns: [
+                        { text: composeItemName(it), width: 60 },
+                        { text: String(it.quantity || 0), width: 20 },
+                        { text: formatPrice(total), width: 20 }
+                    ]
+                });
+            });
+            return rows;
+        }
+
+        function composeItemName(item) {
+            let name = (item.menu && item.menu.name) ? item.menu.name : 'เมนู';
+            if (item.option && item.option.length > 0) {
+                const opts = item.option
+                    .map(o => o?.option?.type)
+                    .filter(Boolean);
+                if (opts.length) name += ` (+${opts.join(', ')})`;
+            }
+            if (item.remark) name += ` [${item.remark}]`;
+            return name;
+        }
+
+        function buildTotalsBlock(total, vatRate = null) {
+            const items = [];
+            items.push({ type: "line", bold: true });
+            if (vatRate !== null) {
+                const vat = total * vatRate;
+                const grand = total + vat;
+                items.push({ type: "text", data: `ยอดรวม: ${formatPrice(total)} ฿`, align: "right", bold: true });
+                items.push({ type: "text", data: `ภาษีมูลค่าเพิ่ม ${Math.round(vatRate*100)}%: ${formatPrice(vat)} ฿`, align: "right", bold: true });
+                items.push({ type: "text", data: `รวมทั้งสิ้น: ${formatPrice(grand)} ฿`, align: "right", bold: true, size: 2 });
+            } else {
+                items.push({ type: "text", data: `Total: ${formatPrice(total)} ฿`, align: "right", bold: true, size: 2 });
+            }
+            items.push({ type: "newline" });
+            return items;
+        }
+
+        function calcTotal(order) {
+            const groupedItems = groupOrderItems(order || []);
+            return groupedItems.reduce((sum, it) => sum + parseFloat(it.price || 0) * parseInt(it.quantity || 0), 0);
+        }
+
+        // สร้าง payload ตามชนิดใบเสร็จใน data.type
+        function buildPrintPayloadByType(data) {
+            const payload = [];
+            const type = data?.type || 'normal';
+
+            if (type === 'normal') {
+                payload.push(...buildHeaderBlock(data?.config?.name || 'ใบเสร็จรับเงิน', data?.pay?.payment_number, data?.pay?.created_at));
+                payload.push(...buildTableHeader());
+                payload.push(...buildTableRowsFromOrder(data?.order || []));
+                const total = parseFloat(data?.pay?.total ?? calcTotal(data?.order || []));
+                payload.push(...buildTotalsBlock(total, null));
+            }
+            else if (type === 'taxfull' || type === 'tax_full' || type === 'tax') {
+                payload.push(...buildHeaderBlock((data?.config?.name || 'ร้านอาหาร') + ' - ใบกำกับภาษี', data?.pay?.payment_number, data?.pay?.created_at));
+                if (data?.tax_full) {
+                    payload.push({ type: "text", data: `ชื่อ: ${data.tax_full.name}`, align: "left" });
+                    payload.push({ type: "text", data: `เบอร์โทร: ${data.tax_full.tel}`, align: "left" });
+                    payload.push({ type: "text", data: `เลขภาษี: ${data.tax_full.tax_id}`, align: "left" });
+                    payload.push({ type: "text", data: `ที่อยู่: ${data.tax_full.address}`, align: "left" });
+                    payload.push({ type: "line", bold: true });
+                }
+                payload.push(...buildTableHeader());
+                payload.push(...buildTableRowsFromOrder(data?.order || []));
+                const total = calcTotal(data?.order || []);
+                payload.push(...buildTotalsBlock(total, 0.07));
+            }
+            else if (type === 'order_admin') {
+                payload.push(...buildHeaderBlock(data?.config?.name || 'สรุปออเดอร์ (แอดมิน)', `โต๊ะ #${data?.table?.table_number || data?.table_id || '-'}`, new Date()));
+                payload.push(...buildTableHeader());
+                payload.push(...buildTableRowsFromOrder(data?.order_details || []));
+                const total = calcTotal(data?.order_details || []);
+                payload.push(...buildTotalsBlock(total, null));
+            }
+            else if (type === 'order_cook') {
+                payload.push({ type: "text", data: data?.config?.name || 'ออเดอร์ครัว', align: "center", bold: true, size: 2 });
+                payload.push({ type: "text", data: `โต๊ะ #${data?.table?.table_number || data?.table_id || '-'}`, align: "center", bold: true });
+                payload.push({ type: "text", data: `วันที่: ${formatDateTime(new Date())}`, align: "center" });
+                payload.push({ type: "line", bold: true });
+                const groupedItems = groupOrderItems(data?.order_details || []);
+                if (groupedItems.length === 0) {
+                    payload.push({ type: "text", data: '— ไม่มีรายการ —', align: "center" });
+                } else {
+                    groupedItems.forEach((it, idx) => {
+                        payload.push({ type: "text", data: `${idx+1}. ${composeItemName(it)}`, align: "left", bold: true, size: 2 });
+                        payload.push({ type: "text", data: `จำนวน: ${it.quantity}`, align: "left", bold: true });
+                        payload.push({ type: "line" });
+                    });
+                }
+            }
+            else {
+                // default -> normal
+                return buildPrintPayloadByType({ ...data, type: 'normal' });
+            }
+
+            // ไม่มี QR/Barcode/Image ใน payload (ตาม requirement)
+            return payload.filter(it => {
+                if (it.type === 'image'   && !FEATURE_IMAGE) return false;
+                if (it.type === 'qrcode'  && !FEATURE_QRCODE) return false;
+                if (it.type === 'barcode' && !FEATURE_BARCODE) return false;
+                return true;
             });
         }
 
+        // ====== Preview HTML จาก payload (ใช้แสดงผล + QZ fallback) ======
+        function payloadToHTML(payload) {
+            let html = '';
+            const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+            payload.forEach(item => {
+                switch (item.type) {
+                    case 'text': {
+                        const cls = [
+                            'pv-text',
+                            item.bold ? 'bold' : '',
+                            item.size === 2 ? 'size2' : ''
+                        ].join(' ').trim();
+                        const align = item.align === 'right' ? 'pv-right' : item.align === 'center' ? 'pv-center' : '';
+                        html += `<div class="${cls} ${align}">${esc(item.data)}</div>`;
+                        break;
+                    }
+                    case 'newline': {
+                        html += '<br>';
+                        break;
+                    }
+                    case 'line': {
+                        html += `<div class="pv-line"></div>`;
+                        break;
+                    }
+                    case 'table': {
+                        // simple flex row
+                        html += `<div class="pv-row">`;
+                        (item.columns || []).forEach(col => {
+                            const w = Math.max(0, Math.min(100, parseFloat(col.width || 0)));
+                            html += `<div class="pv-col" style="width:${w}%;">${esc(col.text ?? '')}</div>`;
+                        });
+                        html += `</div>`;
+                        break;
+                    }
+                    case 'image':
+                    case 'qrcode':
+                    case 'barcode': {
+                        // ปิดไว้ ไม่แสดง
+                        break;
+                    }
+                    default: break;
+                }
+            });
+            return `<div>${html}</div>`;
+        }
+
+        // ====== QZ Tray ======
+        if (window.qz) {
+            qz.security.setCertificatePromise((resolve) => resolve());
+            qz.security.setSignaturePromise(() => (resolve) => resolve());
+        }
         function printViaQZ(html) {
+            if (!window.qz) return Promise.reject(new Error('QZ not found'));
             return qz.websocket.connect()
                 .then(() => qz.printers.getDefault())
                 .then(printer => {
                     const cfg = qz.configs.create(printer);
                     return qz.print(cfg, [{ type: 'html', format: 'plain', data: html }]);
-                });
+                })
+                .finally(() => { try { qz.websocket.disconnect(); } catch(e){} });
         }
-        
-        if (isInIframe) {
-            document.body.classList.add('preview-mode');
-        }
-        
-        function formatPrice(price) {
-            return parseFloat(price).toFixed(2);
-        }
-        
-        function formatDateTime(dateTime) {
-            const date = new Date(dateTime);
-            return date.toLocaleDateString('th-TH') + ' ' + date.toLocaleTimeString('th-TH');
-        }
-        
-        function groupOrderItems(orderItems) {
-            const grouped = {};
-            
-            orderItems.forEach(item => {
-                let key = `${item.menu ? item.menu.name : 'เมนู'}_${item.price}`;
-                
-                if (item.option && item.option.length > 0) {
-                    const optionKeys = item.option
-                        .map(opt => opt.option ? opt.option.type : '')
-                        .sort()
-                        .join(',');
-                    key += `_${optionKeys}`;
-                }
-                
-                if (item.remark) {
-                    key += `_${item.remark}`;
-                }
-                
-                if (grouped[key]) {
-                    grouped[key].quantity = parseInt(grouped[key].quantity) + parseInt(item.quantity);
-                } else {
-                    grouped[key] = {
-                        ...item,
-                        quantity: parseInt(item.quantity)
-                    };
-                }
-            });
-            
-            return Object.values(grouped);
-        }
-        
-        function renderContent() {
-            const container = document.getElementById('print-content');
-            let html = '';
-            
-            console.log('Data type:', data.type);
-            console.log('Data:', data);
-            
-            if (data.type === 'normal') {
-                html = renderNormalReceipt();
-            } else if (data.type === 'taxfull') {
-                html = renderTaxReceipt();
-            } else if (data.type === 'order_admin') {
-                html = renderOrderAdmin();
-            } else if (data.type === 'order_cook') {
-                html = renderOrderCook();
-            } else {
-                // Default เป็น normal receipt
-                html = renderNormalReceipt();
-            }
-            
-            container.innerHTML = html;
-        }
-        
-        function renderNormalReceipt() {
-            let html = `
-                <div class="receipt-header">
-                    <h2>${data.config.name || 'ร้านค้าออนไลน์'}</h2>
-                    <div class="receipt-info">
-                        <div>เลขที่ใบเสร็จ #${data.pay.payment_number}</div>
-                        <div>วันที่: ${formatDateTime(data.pay.created_at)}</div>
-                    </div>
-                </div>
-                
-                <table class="receipt-table">
-                    <thead>
-                        <tr>
-                            <th class="item-header">เมนู</th>
-                            <th class="qty-header">จำนวน</th>
-                            <th class="price-header">ราคา</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-            `;
-            
-            let total = 0;
-            if (data.order && data.order.length > 0) {
-                const groupedItems = groupOrderItems(data.order);
-                groupedItems.forEach(item => {
-                    const itemTotal = parseFloat(item.price) * parseInt(item.quantity);
-                    total += itemTotal;
-                    
-                    html += `
-                        <tr>
-                            <td class="item-col">
-                                <div class="menu-name">${item.menu ? item.menu.name : 'เมนู'}</div>
-                    `;
-                    
-                    if (item.option && item.option.length > 0) {
-                        item.option.forEach(opt => {
-                            if (opt.option) {
-                                html += `<div class="menu-option">+ ${opt.option.type}</div>`;
-                            }
-                        });
-                    }
-                    
-                    if (item.remark) {
-                        html += `<div class="menu-remark">หมายเหตุ: ${item.remark}</div>`;
-                    }
-                    
-                    html += `
-                            </td>
-                            <td class="qty-col">${item.quantity}</td>
-                            <td class="price-col">${formatPrice(itemTotal)} ฿</td>
-                        </tr>
-                    `;
-                });
-            }
-            
-            html += `
-                    </tbody>
-                </table>
-                
-                <div class="receipt-total">
-                    <div class="total-line">
-                        <strong>Total: ${formatPrice(data.pay.total)} ฿</strong>
-                    </div>
-                </div>
-            `;
-            
-            return html;
-        }
-        
-        function renderTaxReceipt() {
-            let html = `
-                <div class="header">
-                    <div class="shop-name">${data.config.name || 'ร้านอาหาร'}</div>
-                    <div>ใบกำกับภาษี</div>
-                </div>
-                
-                <div class="order-info">
-                    <div>เลขที่: ${data.pay.payment_number}</div>
-                    <div>โต๊ะ: ${data.pay.table_id || '-'}</div>
-                    <div>วันที่: ${formatDateTime(data.pay.created_at)}</div>
-            `;
-            
-            if (data.tax_full) {
-                html += `
-                    <div style="margin-top: 10px; border-top: 1px dashed #000; padding-top: 5px;">
-                        <div>ชื่อ: ${data.tax_full.name}</div>
-                        <div>เบอร์โทร: ${data.tax_full.tel}</div>
-                        <div>เลขภาษี: ${data.tax_full.tax_id}</div>
-                        <div>ที่อยู่: ${data.tax_full.address}</div>
-                    </div>
-                `;
-            }
-            
-            html += `</div><div class="receipt-section">`;
-            
-            let total = 0;
-            if (data.order && data.order.length > 0) {
-                const groupedItems = groupOrderItems(data.order);
-                groupedItems.forEach(item => {
-                    const itemTotal = parseFloat(item.price) * parseInt(item.quantity);
-                    total += itemTotal;
-                    
-                    html += `
-                        <div class="order-item">
-                            <div class="item-name">${item.menu ? item.menu.name : 'เมนู'}</div>
-                    `;
-                    
-                    if (item.option && item.option.length > 0) {
-                        item.option.forEach(opt => {
-                            if (opt.option) {
-                                html += `<div class="item-option">+ ${opt.option.type}</div>`;
-                            }
-                        });
-                    }
-                    
-                    if (item.remark) {
-                        html += `<div class="item-remark">หมายเหตุ: ${item.remark}</div>`;
-                    }
-                    
-                    html += `
-                            <div class="quantity-price">
-                                ${item.quantity} x ${formatPrice(item.price)} = ${formatPrice(itemTotal)}฿
-                            </div>
-                        </div>
-                    `;
-                });
-            }
-            
-            const vat = total * 0.07;
-            const totalWithVat = total + vat;
-            
-            html += `
-                </div>
-                
-                <div class="total-section">
-                    <div class="total-line">
-                        ยอดรวม: ${formatPrice(total)}฿
-                    </div>
-                    <div class="total-line">
-                        ภาษีมูลค่าเพิ่ม 7%: ${formatPrice(vat)}฿
-                    </div>
-                    <div class="total-line main-total">
-                        รวมทั้งสิ้น: ${formatPrice(totalWithVat)}฿
-                    </div>
-                </div>
-                
-                <div class="footer">
-                    <div>ใบกำกับภาษีอย่างย่อ</div>
-                    <div>ขอบคุณที่ใช้บริการ</div>
-                </div>
-            `;
-            
-            return html;
-        }
-        
-        function renderOrderAdmin() {
-            let html = `
-                <div class="header">
-                    <div class="shop-name">${data.config.name || 'ร้านค้าออนไลน์'}</div>
-                    <div>เลขที่โต๊ะ: #${data.table ? data.table.table_number : data.table_id}</div>
-                    <div>วันที่: ${formatDateTime(new Date())}</div>
-                </div>
-                
-                <table class="order-table">
-                    <tbody>
-            `;
-            
-            if (data.order_details && data.order_details.length > 0) {
-                const groupedItems = groupOrderItems(data.order_details);
-                groupedItems.forEach(item => {
-                    html += `
-                        <tr>
-                            <td class="item-col">
-                                <div style="font-weight: bold;">${item.menu ? item.menu.name : 'เมนู'}</div>
-                    `;
-                    
-                    if (item.option && item.option.length > 0) {
-                        item.option.forEach(opt => {
-                            if (opt.option) {
-                                html += `<div style="font-size: 14px; color: #666;">+ ${opt.option.type}</div>`;
-                            }
-                        });
-                    }
-                    
-                    if (item.remark) {
-                        html += `<div style="font-size: 14px; color: #666;">หมายเหตุ: ${item.remark}</div>`;
-                    }
-                    
-                    html += `
-                            </td>
-                            <td class="qty-col">${item.quantity}</td>
-                            <td class="price-col">${formatPrice(item.price)}฿</td>
-                        </tr>
-                    `;
-                });
-            }
-            
-            // คำนวณราคารวม
-            let total = 0;
-            if (data.order_details && data.order_details.length > 0) {
-                const groupedItems = groupOrderItems(data.order_details);
-                total = groupedItems.reduce((sum, item) => {
-                    return sum + (parseFloat(item.price) * parseInt(item.quantity));
-                }, 0);
-            }
-            
-            html += `
-                        <tr class="total-row">
-                            <td colspan="3">Total: ${formatPrice(total)}฿</td>
-                        </tr>
-                    </tbody>
-                </table>
-            `;
-            
-            return html;
-        }
-        
-        function renderOrderCook() {
-            let html = `
-                <div class="header">
-                    <div class="shop-name">${data.config.name || 'ร้านค้าออนไลน์'}</div>
-                    <div style="background-color: #ffeb3b; padding: 5px; margin: 10px 0; border-radius: 3px;">
-                        <strong>สำหรับครัว - ออเดอร์ในร้าน</strong>
-                    </div>
-                    <div>เลขที่โต๊ะ: #${data.table ? data.table.table_number : data.table_id}</div>
-                    <div>วันที่: ${formatDateTime(new Date())}</div>
-                </div>
-                
-                <div style="margin: 15px 0; font-size: 16px; font-weight: bold; text-align: center; border: 2px solid #000; padding: 10px;">
-                    รายการอาหารที่ต้องทำ
-                </div>
-            `;
-            
-            if (data.order_details && data.order_details.length > 0) {
-                const groupedItems = groupOrderItems(data.order_details);
-                groupedItems.forEach((item, index) => {
-                    html += `
-                        <div class="order-item" style="border: 1px solid #ddd; margin: 10px 0; padding: 10px; background-color: #f9f9f9;">
-                            <div style="font-size: 18px; font-weight: bold; text-align: center; margin-bottom: 5px;">
-                                ${index + 1}. ${item.menu ? item.menu.name : 'เมนู'}
-                            </div>
-                            <div style="text-align: center; font-size: 20px; font-weight: bold; color: #e91e63; margin: 5px 0;">
-                                จำนวน: ${item.quantity} ${item.quantity > 1 ? 'จาน' : 'จาน'}
-                            </div>
-                    `;
-                    
-                    if (item.option && item.option.length > 0) {
-                        html += `<div style="margin: 5px 0; font-weight: bold;">ตัวเลือก:</div>`;
-                        item.option.forEach(opt => {
-                            if (opt.option) {
-                                html += `<div style="font-size: 16px; color: #666; margin: 2px 0; text-align: center;">• ${opt.option.type}</div>`;
-                            }
-                        });
-                    }
-                    
-                    if (item.remark) {
-                        html += `
-                            <div style="margin: 10px 0; padding: 5px; background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 3px;">
-                                <strong>หมายเหตุ:</strong> ${item.remark}
-                            </div>
-                        `;
-                    }
-                    
-                    html += `</div>`;
-                });
-            }
-            
-            html += `
-                <div style="margin-top: 20px; text-align: center; font-size: 14px; color: #666;">
-                    --- สิ้นสุดรายการ ---
-                </div>
-            `;
-            
-            return html;
-        }
-        
-        // ฟังก์ชันจัดการการพิมพ์
+
+        // ====== พิมพ์ผ่าน JSBridge → Fallback ======
         function handlePrint() {
-            if (isMobileApp()) {
-                console.log('Mobile app detected, using JSBridge');
-                printViaJSBridge(data);
-                return Promise.resolve();
-            } else if (window.qz) {
-                console.log('QZ Tray detected, printing silently');
-                const html = `<html><head><meta charset="UTF-8"></head><body>${document.querySelector('.print-wrapper').innerHTML}</body></html>`;
+            // 1) JSBridge
+            const payload = buildPrintPayloadByType(data);
+            const sent = sendCommand("PRINT_START", payload);
+            if (sent) return Promise.resolve();
+
+            // 2) QZ Tray
+            const html = `<html><head><meta charset="UTF-8"></head><body>${document.getElementById('print-content').innerHTML}</body></html>`;
+            if (window.qz) {
                 return printViaQZ(html).catch(err => {
-                    console.error('QZ Tray error', err);
+                    console.warn('QZ error -> fallback window.print', err);
                     window.print();
                 });
-            } else {
-                console.log('Web browser detected, using window.print');
-                window.print();
-                return Promise.resolve();
             }
+
+            // 3) Browser
+            window.print();
+            return Promise.resolve();
         }
-        
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('DOM loaded, rendering content...');
-            renderContent();
-            
-            // Auto print handling
+
+        // ====== Render preview ======
+        function renderPreview() {
+            const payload = buildPrintPayloadByType(data);
+            document.getElementById('print-content').innerHTML = payloadToHTML(payload);
+        }
+
+        // ====== Auto flow ======
+        document.addEventListener('DOMContentLoaded', () => {
+            if (isInIframe) document.body.classList.add('preview-mode');
+
+            renderPreview();
+            checkPrinterStatus();
+
+            document.getElementById('btnPrint').addEventListener('click', () => {
+                handlePrint().catch(console.error);
+            });
+
+            // Auto print เฉพาะบางชนิด (ตามเดิม)
             if (!isInIframe) {
-                if (data.type === 'order_cook') {
-                    console.log('Auto print triggered for kitchen');
-                    setTimeout(function() {
-                        handlePrint().finally(function() {
-                            setTimeout(function() {
+                const t = (data?.type || '').toLowerCase();
+                if (t === 'order_cook') {
+                    setTimeout(() => {
+                        handlePrint().finally(() => {
+                            setTimeout(() => {
                                 if (window.opener) {
                                     window.opener.postMessage('cook-print-done', '*');
                                     window.close();
-                                } else {
-                                    window.location.href = '/admin/order';
                                 }
-                            }, 1000);
+                            }, 800);
                         });
-                    }, 3000); // show for 3 seconds before printing
-                } else if (data.type === 'order_admin') {
-                    console.log('Auto print triggered for admin');
-                    setTimeout(function() {
-                        handlePrint();
-                    }, 1000);
+                    }, 1500);
+                } else if (t === 'order_admin') {
+                    setTimeout(() => { handlePrint(); }, 800);
                 }
             }
         });
-        
-        // เพิ่ม error handling
+
+        // กัน error เงียบ
         window.addEventListener('error', function(e) {
-            console.error('JavaScript Error:', e.error);
-            document.getElementById('print-content').innerHTML = '<div style="text-align: center; color: red; padding: 20px;">เกิดข้อผิดพลาดในการโหลดข้อมูล<br>กรุณาลองใหม่อีกครั้ง</div>';
+            console.error('JavaScript Error:', e?.error || e);
+            document.getElementById('print-content').innerHTML =
+                '<div style="text-align: center; color: red; padding: 20px;">เกิดข้อผิดพลาดในการโหลดข้อมูล<br>กรุณาลองใหม่อีกครั้ง</div>';
         });
     </script>
 </body>
