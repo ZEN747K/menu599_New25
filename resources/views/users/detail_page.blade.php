@@ -239,7 +239,6 @@
                     </div>
                 </div>
                 
-                <!-- แสดงข้อความเมื่อไม่พบผลลัพธ์ -->
                 <div id="noResults" class="text-center py-4 d-none">
                     <i class="fas fa-search fa-2x text-muted mb-2"></i>
                     <h6 class="text-muted">ไม่พบเมนูที่ค้นหา</h6>
@@ -405,7 +404,7 @@
                         </div>
                         <hr class="my-2">
                         <div class="offcanvas-body pt-1 px-3">
-                            <!-- JavaScript จะเติมข้อมูลสินค้า id ตรงกันไว้ตรงนี้ -->
+                           
                         </div>
                         <div class="fixed-bottom py-3"
                             style="background-color: white; z-index: 999; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5); border: none;">
@@ -423,628 +422,664 @@
     </div>
 
     <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // ✅ JavaScript สำหรับค้นหา
-        const searchInput = document.getElementById('searchInput');
-        const clearSearchBtn = document.getElementById('clearSearch');
-        const searchResults = document.getElementById('searchResults');
-        const searchResultsContent = document.getElementById('searchResultsContent');
-        const noResults = document.getElementById('noResults');
-        const menuGrid = document.getElementById('menuGrid');
+document.addEventListener('DOMContentLoaded', function() {
+    //  JavaScript สำหรับค้นหา
+    const searchInput = document.getElementById('searchInput');
+    const clearSearchBtn = document.getElementById('clearSearch');
+    const searchResults = document.getElementById('searchResults');
+    const searchResultsContent = document.getElementById('searchResultsContent');
+    const noResults = document.getElementById('noResults');
+    const menuGrid = document.getElementById('menuGrid');
+    
+    let searchTimeout;
+    let menuData = [];
+    
+    @if(isset($menu))
+    menuData = @json($menu);
+    @endif
+    
+    //  function ตรวจสอบการเลือกที่บังคับ 
+    function validateRequiredSelections(rsId) {
+        const rsCheckboxes = Array.from(document.querySelectorAll(
+            `.option-checkbox[data-rs-id="${rsId}"]`));
         
-        let searchTimeout;
-        let menuData = [];
-        
-        @if(isset($menu))
-        menuData = @json($menu);
-        @endif
-        
-        function searchMenus(query) {
-            if (!query.trim()) {
-                hideSearchResults();
-                return;
+        const groups = [...new Set(rsCheckboxes.map(cb => cb.dataset.group))];
+        let allRequiredGroupsValid = true;
+
+        groups.forEach(groupKey => {
+            const groupCBs = rsCheckboxes.filter(cb => cb.dataset.group === groupKey);
+            if (groupCBs.length === 0) return;
+            
+            const groupRequired = parseInt(groupCBs[0]?.dataset.required || 0);
+            const groupLimit = parseInt(groupCBs[0]?.dataset.limit || 0);
+            const checkedCount = groupCBs.filter(cb => cb.checked).length;
+
+            if (groupRequired === 1 && checkedCount < groupLimit) {
+                allRequiredGroupsValid = false;
             }
-            
-            const results = menuData.filter(item => 
-                item.name.toLowerCase().includes(query.toLowerCase()) ||
-                (item.detail && item.detail.toLowerCase().includes(query.toLowerCase()))
-            );
-            
-            if (results.length > 0) {
-                displaySearchResults(results, query);
+        });
+
+        const addToCartBtn = document.querySelector(`#offcanvasAdd-${rsId} #add-to-cart-btn`);
+        const noteCountDiv = document.querySelector(`.note-count[data-id="${rsId}"]`);
+        const currentCount = parseInt(noteCountDiv?.textContent) || 0;
+        
+        if (addToCartBtn) {
+            if (currentCount === 0 || !allRequiredGroupsValid) {
+                addToCartBtn.disabled = true;
             } else {
-                showNoResults();
+                addToCartBtn.disabled = false;
             }
         }
+
+        return allRequiredGroupsValid;
+    }
+
+    function initializeModal(rsId) {
+        const offcanvasEl = document.querySelector(`#offcanvasAdd-${rsId}`);
+        if (!offcanvasEl) return;
+
+        // รีเซ็ตการเลือก
+        const checkboxes = offcanvasEl.querySelectorAll('input.option-checkbox');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = false;
+            checkbox.removeAttribute('disabled');
+        });
+
+        // รีเซ็ตจำนวน
+        const noteCountDiv = offcanvasEl.querySelector(`.note-count[data-id="${rsId}"]`);
+        if (noteCountDiv) {
+            noteCountDiv.textContent = '1';
+        }
+
+        // รีเซ็ตราคา
+        const base_price = offcanvasEl.querySelector('.base_pricex');
+        const price = offcanvasEl.querySelector('.total-pricex');
+        if (base_price && price) {
+            price.textContent = base_price.value;
+        }
+
+        validateRequiredSelections(rsId);
+    }
+    
+    function searchMenus(query) {
+        if (!query.trim()) {
+            hideSearchResults();
+            return;
+        }
         
-        function displaySearchResults(results, query) {
-            searchResultsContent.innerHTML = '';
+        const results = menuData.filter(item => 
+            item.name.toLowerCase().includes(query.toLowerCase()) ||
+            (item.detail && item.detail.toLowerCase().includes(query.toLowerCase()))
+        );
+        
+        if (results.length > 0) {
+            displaySearchResults(results, query);
+        } else {
+            showNoResults();
+        }
+    }
+    
+    function displaySearchResults(results, query) {
+        searchResultsContent.innerHTML = '';
+        
+        results.forEach(item => {
+            const highlightedName = highlightText(item.name, query);
+            const highlightedDetail = item.detail ? highlightText(item.detail, query) : '';
             
-            results.forEach(item => {
-                const highlightedName = highlightText(item.name, query);
-                const highlightedDetail = item.detail ? highlightText(item.detail, query) : '';
-                
-                const resultItem = document.createElement('div');
-                resultItem.className = 'search-result-item p-3 mb-2';
-                resultItem.innerHTML = `
-                    <div class="row align-items-center">
-                        <div class="col-2">
-                            <img src="${item.files ? '{{ url("storage") }}/' + item.files.file : '{{ asset("foods/default-photo.png") }}'}" 
-                                 alt="${item.name}" 
-                                 class="search-result-image">
-                        </div>
-                        <div class="col-7">
-                            <h6 class="mb-1">${highlightedName}</h6>
-                            ${highlightedDetail ? `<p class="text-muted small mb-0">${highlightedDetail}</p>` : ''}
-                        </div>
-                        <div class="col-3 text-end">
-                            <span class="fw-bold">${item.base_price} ฿</span>
+            const resultItem = document.createElement('div');
+            resultItem.className = 'search-result-item p-3 mb-2';
+            resultItem.innerHTML = `
+                <div class="row align-items-center">
+                    <div class="col-2">
+                        <img src="${item.files ? '{{ url("storage") }}/' + item.files.file : '{{ asset("foods/default-photo.png") }}'}" 
+                             alt="${item.name}" 
+                             class="search-result-image">
+                    </div>
+                    <div class="col-7">
+                        <h6 class="mb-1">${highlightedName}</h6>
+                        ${highlightedDetail ? `<p class="text-muted small mb-0">${highlightedDetail}</p>` : ''}
+                    </div>
+                    <div class="col-3 text-end">
+                        <span class="fw-bold">${item.base_price} ฿</span>
+                    </div>
+                </div>
+            `;
+            
+            resultItem.addEventListener('click', function() {
+                const menuCard = document.querySelector(`[data-id="${item.id}"]`);
+                if (menuCard) {
+                    hideSearchResults();
+                    searchInput.value = '';
+                    clearSearchBtn.classList.add('d-none');
+                    
+                    menuCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    
+                    setTimeout(() => {
+                        menuCard.click();
+                    }, 500);
+                }
+            });
+            
+            searchResultsContent.appendChild(resultItem);
+        });
+        
+        searchResults.classList.remove('d-none');
+        noResults.classList.add('d-none');
+        menuGrid.classList.add('searching');
+    }
+    
+    function showNoResults() {
+        searchResults.classList.add('d-none');
+        noResults.classList.remove('d-none');
+        menuGrid.classList.add('searching');
+    }
+    
+    function hideSearchResults() {
+        searchResults.classList.add('d-none');
+        noResults.classList.add('d-none');
+        menuGrid.classList.remove('searching');
+    }
+    
+    function highlightText(text, query) {
+        if (!query.trim()) return text;
+        
+        const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+        return text.replace(regex, '<span class="search-highlight">$1</span>');
+    }
+    
+    searchInput.addEventListener('input', function() {
+        const query = this.value.trim();
+        
+        if (query) {
+            clearSearchBtn.classList.remove('d-none');
+        } else {
+            clearSearchBtn.classList.add('d-none');
+            hideSearchResults();
+        }
+        
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            searchMenus(query);
+        }, 300);
+    });
+    
+    clearSearchBtn.addEventListener('click', function() {
+        searchInput.value = '';
+        this.classList.add('d-none');
+        hideSearchResults();
+        searchInput.focus();
+    });
+    
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.search-container')) {
+            hideSearchResults();
+        }
+    });
+    
+    searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const firstResult = searchResultsContent.querySelector('.search-result-item');
+            if (firstResult) {
+                firstResult.click();
+            }
+        }
+    });
+
+    function closeAllOffcanvas() {
+        const openOffcanvas = document.querySelector('.offcanvas.show');
+        if (openOffcanvas) {
+            const instance = bootstrap.Offcanvas.getInstance(openOffcanvas);
+            if (instance) instance.hide();
+        }
+    }
+
+    const addButtons = document.querySelectorAll('.add-button');
+
+    addButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const productId = this.dataset.rsId;
+            const basePrice = this.dataset.rsPrice;
+            const targetId = `#offcanvasAdd-${productId}`;
+            const offcanvasEl = document.querySelector(targetId);
+            if (!offcanvasEl) return;
+            
+            // รีเซ็ต UUID
+            const uniqId = document.getElementById('uuid');
+            if (uniqId && uniqId.value) {
+                uniqId.value = '';
+            }
+
+            // รีเซ็ตการเลือกและเปิดใช้งาน checkbox ทั้งหมด
+            const checkboxes = offcanvasEl.querySelectorAll('input.option-checkbox');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = false;
+                checkbox.removeAttribute('disabled');
+            });
+
+            // รีเซ็ตหมายเหตุ
+            const noteField = offcanvasEl.querySelector(`#note_${productId}`);
+            if (noteField) noteField.value = '';
+
+            // รีเซ็ตจำนวน
+            const noteCountDiv = offcanvasEl.querySelector(`.note-count[data-id="${productId}"]`);
+            if (noteCountDiv) {
+                noteCountDiv.textContent = '1';
+            }
+
+            // รีเซ็ตราคา
+            const base_price = offcanvasEl.querySelector('.base_pricex');
+            const price = offcanvasEl.querySelector('.total-pricex');
+            if (base_price && price) {
+                price.textContent = base_price.value;
+            }
+
+            // ตั้งค่าปุ่ม
+            const addToCartBtn = document.querySelector(`.add-to-cart-btn[data-rs-id="${productId}"]`);
+            const backMenuBtn = document.querySelector(`.back-menu[data-rs-id="${productId}"]`);
+            
+            addToCartBtn?.removeAttribute('hidden');
+            backMenuBtn?.setAttribute('hidden', true);
+
+            validateRequiredSelections(productId);
+
+            closeAllOffcanvas();
+
+            setTimeout(() => {
+                const bsOffcanvas = bootstrap.Offcanvas.getOrCreateInstance(offcanvasEl);
+                bsOffcanvas.show();
+            }, 100);
+        });
+    });
+
+    const productCards = document.querySelectorAll('.product-card');
+    productCards.forEach(card => {
+        card.addEventListener('click', function() {
+            const productId = this.dataset.id;
+            
+            const cart = JSON.parse(localStorage.getItem('cart')) || [];
+            const matchingItems = cart.filter(item => item.id === productId);
+
+            const targetId = matchingItems.length > 0 ?
+                `#offcanvasEdit-${productId}` :
+                `#offcanvasAdd-${productId}`;
+            const targetEl = document.querySelector(targetId);
+            if (!targetEl) return;
+
+            if (matchingItems.length > 0) {
+                const container = targetEl.querySelector('.offcanvas-body');
+                container.innerHTML = '';
+
+                matchingItems.forEach(item => {
+                    const optionsText = item.options.map(opt => `${opt.label}`)
+                        .join(', ');
+                    const html = `
+                    <div class="card mb-2 item-card border-0 border-bottom rounded-0" data-uuid="${item.uuid}" data-product-id="${item.id}">
+                        <div class="card-body text-start p-2 cursor-pointer">
+                            <div class="row justify-content-between align-items-start fs-6">
+                                <div class="col-9 d-flex flex-column justify-content-start lh-sm">
+                                    <div class="card-title m-0">${item.name}</div>
+                                    <div class="text-muted" style="font-size: 12px;">${optionsText || '-'}</div>
+                                </div>
+                                <div class="col-1 mt-1 amount-custom text-center">${item.amount}</div>
+                                <div class="col-2 text-end">${item.total_price}</div>
+                            </div>
                         </div>
                     </div>
                 `;
-                
-                resultItem.addEventListener('click', function() {
-                    const menuCard = document.querySelector(`[data-id="${item.id}"]`);
-                    if (menuCard) {
-                        hideSearchResults();
-                        searchInput.value = '';
-                        clearSearchBtn.classList.add('d-none');
-                        
-                        menuCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        
-                        setTimeout(() => {
-                            menuCard.click();
-                        }, 500);
-                    }
+                    container.innerHTML += html;
                 });
-                
-                searchResultsContent.appendChild(resultItem);
-            });
-            
-            searchResults.classList.remove('d-none');
-            noResults.classList.add('d-none');
-            menuGrid.classList.add('searching');
-        }
-        
-        function showNoResults() {
-            searchResults.classList.add('d-none');
-            noResults.classList.remove('d-none');
-            menuGrid.classList.add('searching');
-        }
-        
-        function hideSearchResults() {
-            searchResults.classList.add('d-none');
-            noResults.classList.add('d-none');
-            menuGrid.classList.remove('searching');
-        }
-        
-        function highlightText(text, query) {
-            if (!query.trim()) return text;
-            
-            const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-            return text.replace(regex, '<span class="search-highlight">$1</span>');
-        }
-        
-        searchInput.addEventListener('input', function() {
-            const query = this.value.trim();
-            
-            if (query) {
-                clearSearchBtn.classList.remove('d-none');
+
+                setTimeout(() => {
+                    const itemCards = container.querySelectorAll('.item-card');
+                    itemCards.forEach(innerCard => {
+                        innerCard.addEventListener('click', function() {
+                            const uuid = this.dataset.uuid;
+                            const productId = this.dataset.productId;
+                            const addOffcanvas = document.querySelector(`#offcanvasAdd-${productId}`);
+                            const item = cart.find(i => i.uuid === uuid);
+
+                            if (!item || !addOffcanvas) return;
+
+                            document.getElementById('uuid').value = uuid;
+
+                            const noteField = addOffcanvas.querySelector(`#note_${productId}`);
+                            const amountEl = addOffcanvas.querySelector(`.note-count[data-id="${productId}"]`);
+                            const totalPriceEl = addOffcanvas.querySelector(`#total-price`);
+                            const checkboxes = addOffcanvas.querySelectorAll('input.option-checkbox');
+
+                            checkboxes.forEach(checkbox => {
+                                checkbox.checked = item.options?.some(opt => opt.id === checkbox.value) || false;
+                            });
+
+                            if (noteField) noteField.value = item.note || '';
+                            if (amountEl) amountEl.textContent = item.amount || 1;
+                            if (totalPriceEl) totalPriceEl.textContent = item.total_price || item.base_price;
+
+                            const currentCount = parseInt(amountEl?.textContent) || 0;
+                            const addToCartBtn = document.querySelector(`.add-to-cart-btn[data-rs-id="${productId}"]`);
+                            const backMenuBtn = document.querySelector(`.back-menu[data-rs-id="${productId}"]`);
+
+                            if (currentCount === 0) {
+                                addToCartBtn?.setAttribute('hidden', true);
+                                backMenuBtn?.removeAttribute('hidden');
+                            } else {
+                                addToCartBtn?.removeAttribute('hidden');
+                                backMenuBtn?.setAttribute('hidden', true);
+                                validateRequiredSelections(productId);
+                            }
+                            closeAllOffcanvas();
+
+                            setTimeout(() => {
+                                const bsAdd = bootstrap.Offcanvas.getOrCreateInstance(addOffcanvas);
+                                bsAdd.show();
+                            }, 300);
+                        });
+                    });
+                }, 100);
+
             } else {
-                clearSearchBtn.classList.add('d-none');
-                hideSearchResults();
-            }
-            
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
-                searchMenus(query);
-            }, 300);
-        });
-        
-        clearSearchBtn.addEventListener('click', function() {
-            searchInput.value = '';
-            this.classList.add('d-none');
-            hideSearchResults();
-            searchInput.focus();
-        });
-        
-        document.addEventListener('click', function(e) {
-            if (!e.target.closest('.search-container')) {
-                hideSearchResults();
-            }
-        });
-        
-        searchInput.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                const firstResult = searchResultsContent.querySelector('.search-result-item');
-                if (firstResult) {
-                    firstResult.click();
-                }
-            }
-        });
-
-        // ✅ ส่วนที่เหลือของ JavaScript เดิม
-        function closeAllOffcanvas() {
-            const openOffcanvas = document.querySelector('.offcanvas.show');
-            if (openOffcanvas) {
-                const instance = bootstrap.Offcanvas.getInstance(openOffcanvas);
-                if (instance) instance.hide();
-            }
-        }
-
-        const addButtons = document.querySelectorAll('.add-button');
-
-        addButtons.forEach(button => {
-            button.addEventListener('click', function() {
-                const productId = this.dataset.rsId;
-                const basePrice = this.dataset.rsPrice;
-                const targetId = `#offcanvasAdd-${productId}`;
+                // กรณีเปิด modal ใหม่
                 const offcanvasEl = document.querySelector(targetId);
                 if (!offcanvasEl) return;
-                const uniqId = document.getElementById('uuid');
-                if (uniqId && uniqId.value) {
-                    uniqId.value = '';
-                }
 
-                const checkboxes = offcanvasEl.querySelectorAll('input.option-checkbox');
+                // รีเซ็ต UUID
+                const uniqId = document.getElementById('uuid');
+                if (uniqId) uniqId.value = '';
+
+                // รีเซ็ตหมายเหตุ
+                const noteField = targetEl.querySelector(`#note_${productId}`);
+                if (noteField) noteField.value = '';
+
+                // รีเซ็ตการเลือก
+                const checkboxes = targetEl.querySelectorAll('input.option-checkbox');
                 checkboxes.forEach(checkbox => {
                     checkbox.checked = false;
                     checkbox.removeAttribute('disabled');
                 });
 
-                const noteField = offcanvasEl.querySelector(`#note_${productId}`);
-                if (noteField) noteField.value = '';
+                // รีเซ็ตจำนวน
+                const amountDisplay = targetEl.querySelector(`.note-count[data-id="${productId}"]`);
+                if (amountDisplay) amountDisplay.textContent = '1';
 
-                const noteCountDiv = offcanvasEl.querySelector(
-                    `.note-count[data-id="${productId}"]`);
-                if (noteCountDiv) {
-                    noteCountDiv.textContent = '1';
-                }
-
-                let currentCount = parseInt(noteCountDiv?.textContent) || 0;
-
-                if (currentCount < 0) currentCount = 0;
-                noteCountDiv.textContent = currentCount;
-
-                const addToCartBtn = document.querySelector(
-                    `.add-to-cart-btn[data-rs-id="${productId}"]`);
-                const backMenuBtn = document.querySelector(
-                    `.back-menu[data-rs-id="${productId}"]`);   
+                // รีเซ็ตราคา
                 const base_price = offcanvasEl.querySelector('.base_pricex');
                 const price = offcanvasEl.querySelector('.total-pricex');
-                    if (currentCount === 0) {
-                        addToCartBtn?.setAttribute('hidden', true);
-                        backMenuBtn?.removeAttribute('hidden');
-                    } else {
-                        addToCartBtn?.removeAttribute('hidden');
-                        if (checkboxes.length > 0) {
-                            addToCartBtn?.setAttribute('disabled', '');
-                        } else {
-                            addToCartBtn?.removeAttribute('disabled');
-                        }
-                        price.textContent = base_price.value;
-                        backMenuBtn?.setAttribute('hidden', true);
-                    }
+                if (base_price && price) {
+                    price.textContent = base_price.value;
+                }
 
-                closeAllOffcanvas();
-
-                setTimeout(() => {
-                    const bsOffcanvas = bootstrap.Offcanvas.getOrCreateInstance(
-                        offcanvasEl);
-                    bsOffcanvas.show();
-                }, 100);
-            });
-        });
-
-        const productCards = document.querySelectorAll('.product-card');
-        productCards.forEach(card => {
-            card.addEventListener('click', function() {
-                const productId = this.dataset.id;
+                // ตั้งค่าปุ่ม
+                const addToCartBtn = document.querySelector(`.add-to-cart-btn[data-rs-id="${productId}"]`);
+                const backMenuBtn = document.querySelector(`.back-menu[data-rs-id="${productId}"]`);
                 
-                const cart = JSON.parse(localStorage.getItem('cart')) || [];
-                const matchingItems = cart.filter(item => item.id === productId);
-
-                const targetId = matchingItems.length > 0 ?
-                    `#offcanvasEdit-${productId}` :
-                    `#offcanvasAdd-${productId}`;
-                const targetEl = document.querySelector(targetId);
-                if (!targetEl) return;
-
-                if (matchingItems.length > 0) {
-                    const container = targetEl.querySelector('.offcanvas-body');
-                    container.innerHTML = '';
-
-                    matchingItems.forEach(item => {
-                        const optionsText = item.options.map(opt => `${opt.label}`)
-                            .join(', ');
-                        const html = `
-                        <div class="card mb-2 item-card border-0 border-bottom rounded-0" data-uuid="${item.uuid}" data-product-id="${item.id}">
-                            <div class="card-body text-start p-2 cursor-pointer">
-                                <div class="row justify-content-between align-items-start fs-6">
-                                    <div class="col-9 d-flex flex-column justify-content-start lh-sm">
-                                        <div class="card-title m-0">${item.name}</div>
-                                        <div class="text-muted" style="font-size: 12px;">${optionsText || '-'}</div>
-                                    </div>
-                                    <div class="col-1 mt-1 amount-custom text-center">${item.amount}</div>
-                                    <div class="col-2 text-end">${item.total_price}</div>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                        container.innerHTML += html;
-                    });
-
-                    setTimeout(() => {
-                        const itemCards = container.querySelectorAll('.item-card');
-                        itemCards.forEach(innerCard => {
-                            innerCard.addEventListener('click', function() {
-                                const uuid = this.dataset.uuid;
-                                const productId = this.dataset.productId;
-                                const addOffcanvas = document.querySelector(`#offcanvasAdd-${productId}`);
-                                const item = cart.find(i => i.uuid === uuid);
-
-                                if (!item || !addOffcanvas) return;
-
-                                document.getElementById('uuid').value = uuid;
-
-                                const noteField = addOffcanvas.querySelector(`#note_${productId}`);
-                                const amountEl = addOffcanvas.querySelector(`.note-count[data-id="${productId}"]`);
-                                const totalPriceEl = addOffcanvas.querySelector(`#total-price`);
-                                const checkboxes = addOffcanvas.querySelectorAll('input.option-checkbox');
-
-                                checkboxes.forEach(checkbox => {
-                                    checkbox.checked = item.options?.some(opt => opt.id === checkbox.value) || false;
-                                });
-
-                                if (noteField) noteField.value = item.note || '';
-                                if (amountEl) amountEl.textContent = item.amount || 1;
-                                if (totalPriceEl) totalPriceEl.textContent = item.total_price || item.base_price;
-
-                                const currentCount = parseInt(amountEl?.textContent) || 0;
-                                const addToCartBtn = document.querySelector(`.add-to-cart-btn[data-rs-id="${productId}"]`);
-                                const backMenuBtn = document.querySelector(`.back-menu[data-rs-id="${productId}"]`);
-
-                                if (currentCount === 0) {
-                                    addToCartBtn?.setAttribute('hidden', true);
-                                    backMenuBtn?.removeAttribute('hidden');
-                                } else {
-                                    addToCartBtn?.removeAttribute('hidden');
-                                    if (checkboxes.length > 0) {
-                                        addToCartBtn?.removeAttribute('disabled');
-                                    } else {
-                                        addToCartBtn?.removeAttribute('disabled');
-                                    }
-                                    backMenuBtn?.setAttribute('hidden', true);
-                                }
-                                closeAllOffcanvas();
-
-                                setTimeout(() => {
-                                    const bsAdd = bootstrap.Offcanvas.getOrCreateInstance(addOffcanvas);
-                                    bsAdd.show();
-                                }, 300);
-                            });
-                        });
-                    }, 100);
-
-                } else {
-                    const offcanvasEl = document.querySelector(targetId);
-                    if (!offcanvasEl) return;
-
-                    const uniqId = document.getElementById('uuid');
-                    if (uniqId) uniqId.value = '';
-
-                    const noteField = targetEl.querySelector(`#note_${productId}`);
-                    if (noteField) noteField.value = '';
-
-                    const checkboxes = targetEl.querySelectorAll('input.option-checkbox');
-                    checkboxes.forEach(checkbox => checkbox.checked = false);
-
-                    const amountDisplay = targetEl.querySelector(`.note-count[data-id="${productId}"]`);
-                    if (amountDisplay) amountDisplay.textContent = '1';
-
-                    const totalPriceEl = targetEl.querySelector(`#total-price`);
-                    const basePrice = totalPriceEl?.dataset?.basePrice;
-                    if (totalPriceEl && basePrice) totalPriceEl.textContent = basePrice;
-
-                    const noteCountDiv = document.querySelector(`.note-count[data-id="${productId}"]`);
-                    const addToCartBtn = document.querySelector(`.add-to-cart-btn[data-rs-id="${productId}"]`);
-                    const backMenuBtn = document.querySelector(`.back-menu[data-rs-id="${productId}"]`);
-                    let currentCount = parseInt(noteCountDiv.textContent) || 0;
-
-                    if (currentCount < 0) currentCount = 0;
-                    noteCountDiv.textContent = currentCount;
-                    const base_price = offcanvasEl.querySelector('.base_pricex');
-                    const price = offcanvasEl.querySelector('.total-pricex');
-                    if (currentCount === 0) {
-                        addToCartBtn?.setAttribute('hidden', true);
-                        backMenuBtn?.removeAttribute('hidden');
-                    } else {
-                        addToCartBtn?.removeAttribute('hidden');
-                        if (checkboxes.length > 0) {
-                            addToCartBtn?.setAttribute('disabled', '');
-                        } else {
-                            addToCartBtn?.removeAttribute('disabled');
-                        }
-                        price.textContent = base_price.value;
-                        backMenuBtn?.setAttribute('hidden', true);
-                    }
-                }
-                closeAllOffcanvas();
-                setTimeout(() => {
-                    const bsOffcanvas = bootstrap.Offcanvas.getOrCreateInstance(targetEl);
-                    bsOffcanvas.show();
-                }, 100);
-            });
-        });
-
-        function updateAmountBadgesFromCart() {
-            const cart = JSON.parse(localStorage.getItem('cart')) || [];
-
-            document.querySelectorAll('[data-badge-name]').forEach(badge => {
-                const name = badge.dataset.badgeName;
-                const totalAmount = cart
-                    .filter(item => item.name === name)
-                    .reduce((sum, item) => sum + (item.amount || 0), 0);
-
-                if (totalAmount > 0) {
-                    badge.textContent = totalAmount;
-                    badge.classList.remove('d-none');
-                } else {
-                    badge.classList.add('d-none');
-                }
-            });
-        }
-
-        updateAmountBadgesFromCart();
-
-        const originalSetItem = localStorage.setItem;
-        localStorage.setItem = function(key, value) {
-            originalSetItem.apply(this, arguments);
-            if (key === 'cart') updateAmountBadgesFromCart();
-        };
-
-        const checkboxes = document.querySelectorAll('.option-checkbox');
-
-        function handleCheckboxChange(event) {
-            const cb = event.target;
-            const rsId = cb.dataset.rsId;
-            const group = cb.dataset.group;
-            const limit = parseInt(cb.dataset.limit);
-            const required = parseInt(cb.dataset.required);
-
-            const groupCheckboxes = Array.from(document.querySelectorAll(
-                `.option-checkbox[data-rs-id="${rsId}"][data-group="${group}"]`
-            ));
-            const checked = groupCheckboxes.filter(cb => cb.checked);
-
-            if (required === 1) {
-                groupCheckboxes.forEach(item => {
-                    item.disabled = !item.checked && checked.length >= limit;
-                });
-            } else {
-                groupCheckboxes.forEach(item => {
-                    item.disabled = false;
-                });
-            }
-
-            const basePriceElement = document.querySelector(`.option-checkbox[data-rs-id="${rsId}"]`);
-            let totalPrice = parseFloat(basePriceElement?.dataset.basePrice || 0);
-
-            const rsCheckboxes = Array.from(document.querySelectorAll(
-                `.option-checkbox[data-rs-id="${rsId}"]`));
-            rsCheckboxes.forEach(cb => {
-                if (cb.checked) {
-                    totalPrice += parseFloat(cb.dataset.price) || 0;
-                }
-            });
-
-            const priceLabel = document.querySelector(`#offcanvasAdd-${rsId} #total-price`);
-            if (priceLabel) {
-                priceLabel.textContent = totalPrice.toFixed(2);
-            }
-
-            const groups = [...new Set(rsCheckboxes.map(cb => cb.dataset.group))];
-            let allRequiredGroupsValid = true;
-
-            groups.forEach(groupKey => {
-                const groupCBs = rsCheckboxes.filter(cb => cb.dataset.group === groupKey);
-                const groupRequired = parseInt(groupCBs[0]?.dataset.required || 0);
-                const groupLimit = parseInt(groupCBs[0]?.dataset.limit || 0);
-                const checkedCount = groupCBs.filter(cb => cb.checked).length;
-
-                if (groupRequired === 1 && checkedCount !== groupLimit) {
-                    allRequiredGroupsValid = false;
-                }
-
-                updateTotalPrice(rsId);
-            });
-
-            const addToCartBtn = document.querySelector(`#offcanvasAdd-${rsId} #add-to-cart-btn`);
-            if (addToCartBtn) {
-                addToCartBtn.disabled = !allRequiredGroupsValid;
-            }
-        }
-
-        checkboxes.forEach(cb => cb.addEventListener('change', handleCheckboxChange));
-
-        function changeNoteQty(rsId, delta) {
-            const noteCountDiv = document.querySelector(`.note-count[data-id="${rsId}"]`);
-            const addToCartBtn = document.querySelector(`.add-to-cart-btn[data-rs-id="${rsId}"]`);
-            const backMenuBtn = document.querySelector(`.back-menu[data-rs-id="${rsId}"]`);
-            
-            let currentCount = parseInt(noteCountDiv.textContent) || 0;
-            if(delta){
-                currentCount += delta;
-            }
-            
-            if (currentCount < 0) currentCount = 0;
-            noteCountDiv.textContent = currentCount;
-
-            if (currentCount === 0) {
-                addToCartBtn?.setAttribute('hidden', true);
-                backMenuBtn?.removeAttribute('hidden');
-            } else {
                 addToCartBtn?.removeAttribute('hidden');
                 backMenuBtn?.setAttribute('hidden', true);
-            }
 
-            updateTotalPrice(rsId);
+                validateRequiredSelections(productId);
+            }
+            
+            closeAllOffcanvas();
+            setTimeout(() => {
+                const bsOffcanvas = bootstrap.Offcanvas.getOrCreateInstance(targetEl);
+                bsOffcanvas.show();
+            }, 100);
+        });
+    });
+
+    function updateAmountBadgesFromCart() {
+        const cart = JSON.parse(localStorage.getItem('cart')) || [];
+
+        document.querySelectorAll('[data-badge-name]').forEach(badge => {
+            const name = badge.dataset.badgeName;
+            const totalAmount = cart
+                .filter(item => item.name === name)
+                .reduce((sum, item) => sum + (item.amount || 0), 0);
+
+            if (totalAmount > 0) {
+                badge.textContent = totalAmount;
+                badge.classList.remove('d-none');
+            } else {
+                badge.classList.add('d-none');
+            }
+        });
+    }
+
+    updateAmountBadgesFromCart();
+
+    const originalSetItem = localStorage.setItem;
+    localStorage.setItem = function(key, value) {
+        originalSetItem.apply(this, arguments);
+        if (key === 'cart') updateAmountBadgesFromCart();
+    };
+
+    const checkboxes = document.querySelectorAll('.option-checkbox');
+
+    function handleCheckboxChange(event) {
+        const cb = event.target;
+        const rsId = cb.dataset.rsId;
+        const group = cb.dataset.group;
+        const limit = parseInt(cb.dataset.limit);
+        const required = parseInt(cb.dataset.required);
+
+        const groupCheckboxes = Array.from(document.querySelectorAll(
+            `.option-checkbox[data-rs-id="${rsId}"][data-group="${group}"]`
+        ));
+        const checked = groupCheckboxes.filter(cb => cb.checked);
+
+        // จำกัดจำนวนการเลือกตาม limit
+        if (required === 1) {
+            groupCheckboxes.forEach(item => {
+                item.disabled = !item.checked && checked.length >= limit;
+            });
+        } else {
+            groupCheckboxes.forEach(item => {
+                item.disabled = false;
+            });
         }
 
-        function updateTotalPrice(rsId) {
-            const rsCheckboxes = Array.from(document.querySelectorAll(
-                `.option-checkbox[data-rs-id="${rsId}"]`
-            ));
+        // คำนวณราคารวม
+        const basePriceElement = document.querySelector(`.option-checkbox[data-rs-id="${rsId}"]`);
+        let totalPrice = parseFloat(basePriceElement?.dataset.basePrice || 0);
 
-            const basePriceElement = rsCheckboxes[0];
-            let totalPerItem = parseFloat(basePriceElement?.dataset.basePrice || 0);
+        const rsCheckboxes = Array.from(document.querySelectorAll(
+            `.option-checkbox[data-rs-id="${rsId}"]`));
+        rsCheckboxes.forEach(cb => {
+            if (cb.checked) {
+                totalPrice += parseFloat(cb.dataset.price) || 0;
+            }
+        });
 
-            rsCheckboxes.forEach(cb => {
-                if (cb.checked) {
-                    totalPerItem += parseFloat(cb.dataset.price) || 0;
-                }
-            });
+        const priceLabel = document.querySelector(`#offcanvasAdd-${rsId} #total-price`);
+        if (priceLabel) {
+            priceLabel.textContent = totalPrice.toFixed(2);
+        }
+
+        validateRequiredSelections(rsId);
+        updateTotalPrice(rsId);
+    }
+
+    checkboxes.forEach(cb => cb.addEventListener('change', handleCheckboxChange));
+
+    function changeNoteQty(rsId, delta) {
+        const noteCountDiv = document.querySelector(`.note-count[data-id="${rsId}"]`);
+        const addToCartBtn = document.querySelector(`.add-to-cart-btn[data-rs-id="${rsId}"]`);
+        const backMenuBtn = document.querySelector(`.back-menu[data-rs-id="${rsId}"]`);
+        
+        let currentCount = parseInt(noteCountDiv.textContent) || 0;
+        if(delta){
+            currentCount += delta;
+        }
+        
+        if (currentCount < 0) currentCount = 0;
+        noteCountDiv.textContent = currentCount;
+
+        if (currentCount === 0) {
+            addToCartBtn?.setAttribute('hidden', true);
+            backMenuBtn?.removeAttribute('hidden');
+        } else {
+            addToCartBtn?.removeAttribute('hidden');
+            backMenuBtn?.setAttribute('hidden', true);
+            
+            validateRequiredSelections(rsId);
+        }
+
+        updateTotalPrice(rsId);
+    }
+
+    function updateTotalPrice(rsId) {
+        const rsCheckboxes = Array.from(document.querySelectorAll(
+            `.option-checkbox[data-rs-id="${rsId}"]`
+        ));
+
+        const basePriceElement = rsCheckboxes[0];
+        let totalPerItem = parseFloat(basePriceElement?.dataset.basePrice || 0);
+
+        rsCheckboxes.forEach(cb => {
+            if (cb.checked) {
+                totalPerItem += parseFloat(cb.dataset.price) || 0;
+            }
+        });
+
+        const noteCountDiv = document.querySelector(`.note-count[data-id="${rsId}"]`);
+        const qty = parseInt(noteCountDiv?.textContent) || 0;
+
+        const finalTotal = totalPerItem * qty;
+
+        const priceLabel = document.querySelector(`#offcanvasAdd-${rsId} #total-price`);
+        if (priceLabel) {
+            priceLabel.textContent = finalTotal.toFixed(2);
+        }
+
+        const totalPriceEl = document.querySelector(`.total-pricex[data-id="${rsId}"]`);
+        if (totalPriceEl) {
+            totalPriceEl.textContent = finalTotal.toFixed(2);
+        }
+    }
+
+    document.querySelectorAll('.btn-minus').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const rsId = this.dataset.id;
+            changeNoteQty(rsId, -1);
+        });
+    });
+
+    document.querySelectorAll('.btn-plus').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const rsId = this.dataset.id;
+            changeNoteQty(rsId, 1);
+        });
+    });
+
+    document.querySelectorAll('.back-menu').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const rsId = this.dataset.rsId;
+            const uuid = document.getElementById('uuid')?.value;
+
+            if (uuid) {
+                let cart = JSON.parse(localStorage.getItem('cart')) || [];
+                const updatedCart = cart.filter(item => item.uuid !== uuid);
+                localStorage.setItem('cart', JSON.stringify(updatedCart));
+                updateAmountBadgesFromCart();
+            }
+
+            const offcanvasEl = this.closest('.offcanvas');
+            const bsOffcanvas = bootstrap.Offcanvas.getInstance(offcanvasEl);
+            bsOffcanvas?.hide();
+        });
+    });
+
+    const addToCartButtons = document.querySelectorAll('.add-to-cart-btn');
+
+    addToCartButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const rsId = this.dataset.rsId;
+            const crId = this.dataset.categoryId;
+            
+            const offcanvasEl = this.closest('.offcanvas');
+
+            const basePriceEl = offcanvasEl.querySelector('.base_pricex');
+            const basePrice = parseFloat(basePriceEl.value);
+            const noteTextarea = document.getElementById(`note_${rsId}`);
+            const noteText = noteTextarea ? noteTextarea.value : '';
 
             const noteCountDiv = document.querySelector(`.note-count[data-id="${rsId}"]`);
-            const qty = parseInt(noteCountDiv?.textContent) || 0;
+            const amount = noteCountDiv ? parseInt(noteCountDiv.textContent) || 0 : 0;
 
-            const finalTotal = totalPerItem * qty;
+            const allCheckboxes = offcanvasEl.querySelectorAll('.option-checkbox');
+            const selectedOptions = [];
+            let totalOptionPrice = 0;
 
-            const priceLabel = document.querySelector(`#offcanvasAdd-${rsId} #total-price`);
-            if (priceLabel) {
-                priceLabel.textContent = finalTotal.toFixed(2);
-            }
-
-            const totalPriceEl = document.querySelector(`.total-pricex[data-id="${rsId}"]`);
-            if (totalPriceEl) {
-                totalPriceEl.textContent = finalTotal.toFixed(2);
-            }
-        }
-
-        document.querySelectorAll('.btn-minus').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const rsId = this.dataset.id;
-                changeNoteQty(rsId, -1);
-            });
-        });
-
-        document.querySelectorAll('.btn-plus').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const rsId = this.dataset.id;
-                changeNoteQty(rsId, 1);
-            });
-        });
-
-        document.querySelectorAll('.back-menu').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const rsId = this.dataset.rsId;
-                const uuid = document.getElementById('uuid')?.value;
-
-                if (uuid) {
-                    let cart = JSON.parse(localStorage.getItem('cart')) || [];
-                    const updatedCart = cart.filter(item => item.uuid !== uuid);
-                    localStorage.setItem('cart', JSON.stringify(updatedCart));
-                    updateAmountBadgesFromCart();
+            allCheckboxes.forEach(cb => {
+                if (cb.checked) {
+                    const option = {
+                        id: cb.value || cb.dataset.optionId || null,
+                        label: cb.dataset.label || 'ไม่ทราบชื่อ',
+                        type: cb.dataset.type || 'ไม่ทราบชื่อ',
+                        price: parseFloat(cb.dataset.price || 0),
+                    };
+                    totalOptionPrice += option.price;
+                    selectedOptions.push(option);
                 }
-
-                const offcanvasEl = this.closest('.offcanvas');
-                const bsOffcanvas = bootstrap.Offcanvas.getInstance(offcanvasEl);
-                bsOffcanvas?.hide();
             });
-        });
 
-        const addToCartButtons = document.querySelectorAll('.add-to-cart-btn');
+            const totalPrice = basePrice + totalOptionPrice;
 
-        addToCartButtons.forEach(btn => {
-            btn.addEventListener('click', function() {
-                const rsId = this.dataset.rsId;
-                const crId = this.dataset.categoryId;
-                
-                const offcanvasEl = this.closest('.offcanvas');
+            const uniqId = document.getElementById('uuid')?.value || '';
+            const newUuid = uniqId || crypto.randomUUID();
 
-                const basePriceEl = offcanvasEl.querySelector('.base_pricex');
-                const basePrice = parseFloat(basePriceEl.value);
-                const noteTextarea = document.getElementById(`note_${rsId}`);
-                const noteText = noteTextarea ? noteTextarea.value : '';
+            const product = {
+                uuid: newUuid,
+                id: rsId,
+                category_id: crId,
+                name: offcanvasEl.querySelector('.product-name')?.textContent || 'ไม่ทราบชื่อเมนู',
+                base_price: basePrice,
+                total_price: (totalPrice || 0) * (amount || 1),
+                options: selectedOptions,
+                note: noteText,
+                amount: amount,
+            };
 
-                const noteCountDiv = document.querySelector(`.note-count[data-id="${rsId}"]`);
-                const amount = noteCountDiv ? parseInt(noteCountDiv.textContent) || 0 : 0;
+            let cart = JSON.parse(localStorage.getItem('cart')) || [];
 
-                const allCheckboxes = offcanvasEl.querySelectorAll('.option-checkbox');
-                const selectedOptions = [];
-                let totalOptionPrice = 0;
-
-                allCheckboxes.forEach(cb => {
-                    if (cb.checked) {
-                        const option = {
-                            id: cb.value || cb.dataset.optionId || null,
-                            label: cb.dataset.label || 'ไม่ทราบชื่อ',
-                            type: cb.dataset.type || 'ไม่ทราบชื่อ',
-                            price: parseFloat(cb.dataset.price || 0),
-                        };
-                        totalOptionPrice += option.price;
-                        selectedOptions.push(option);
-                    }
-                });
-
-                const totalPrice = basePrice + totalOptionPrice;
-
-                const uniqId = document.getElementById('uuid')?.value || '';
-                const newUuid = uniqId || crypto.randomUUID();
-
-                const product = {
-                    uuid: newUuid,
-                    id: rsId,
-                    category_id: crId,
-                    name: offcanvasEl.querySelector('.product-name')?.textContent || 'ไม่ทราบชื่อเมนู',
-                    base_price: basePrice,
-                    total_price: (totalPrice || 0) * (amount || 1),
-                    options: selectedOptions,
-                    note: noteText,
-                    amount: amount,
-                };
-
-                let cart = JSON.parse(localStorage.getItem('cart')) || [];
-
-                if (uniqId) {
-                    const index = cart.findIndex(item => item.uuid === uniqId);
-                    if (index !== -1) {
-                        cart[index] = product;
-                    } else {
-                        cart.push(product);
-                    }
+            if (uniqId) {
+                const index = cart.findIndex(item => item.uuid === uniqId);
+                if (index !== -1) {
+                    cart[index] = product;
                 } else {
                     cart.push(product);
                 }
-
-                localStorage.setItem('cart', JSON.stringify(cart));
-
-                const bsOffcanvas = bootstrap.Offcanvas.getInstance(offcanvasEl);
-                if (bsOffcanvas) {
-                    bsOffcanvas.hide();
-                }
-            });
-        });
-
-        const hash = window.location.hash;
-        if (hash && hash.startsWith('#select-')) {
-            const [idPart, uuidPart] = hash.replace('#select-', '').split('&uuid=');
-            const itemId = idPart;
-            const itemUuid = uuidPart;
-
-            const card = document.querySelector(`[data-id="${itemId}"]`);
-            if (card) {
-                card.click();
-
-                setTimeout(() => {
-                    const listItem = document.querySelector(`[data-uuid="${itemUuid}"]`);
-                    if (listItem) {
-                        listItem.click();
-                    }
-                }, 500);
+            } else {
+                cart.push(product);
             }
-        }
+
+            localStorage.setItem('cart', JSON.stringify(cart));
+
+            const bsOffcanvas = bootstrap.Offcanvas.getInstance(offcanvasEl);
+            if (bsOffcanvas) {
+                bsOffcanvas.hide();
+            }
+        });
     });
-    </script>
+
+    const hash = window.location.hash;
+    if (hash && hash.startsWith('#select-')) {
+        const [idPart, uuidPart] = hash.replace('#select-', '').split('&uuid=');
+        const itemId = idPart;
+        const itemUuid = uuidPart;
+
+        const card = document.querySelector(`[data-id="${itemId}"]`);
+        if (card) {
+            card.click();
+
+            setTimeout(() => {
+                const listItem = document.querySelector(`[data-uuid="${itemUuid}"]`);
+                if (listItem) {
+                    listItem.click();
+                }
+            }, 500);
+        }
+    }
+});
+</script>
 @endsection
