@@ -6,244 +6,503 @@
     <?php
     
     use App\Models\Config;
+    use App\Models\Categories;
     
     $config = Config::first();
+    
+    $currentCategory = Categories::find($category_id ?? request()->route('id'));
+    $allCategories = Categories::get();
+
     ?>
     <style>
-        .title-food {
-            font-size: 30px;
-            font-weight: bold;
-            color: #000000; /* เปลี่ยนเป็นสีดำ */
-        }
 
-        .card-food {
-            background-color: var(--bg-card-food);
-            border-radius: 20px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
-            padding: 4px;
-        }
+.header-section {
+    background: linear-gradient(135deg, {{ $config->color1 ?? '#6cd4e2ff' }} 0%, {{ $config->color2 ?? '#8fd8e0ff' }} 100%);
+    padding: 15px 15px 20px 15px;
+    border-radius: 0 0 25px 25px;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.1);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    margin: -15px -15px 15px -15px;
+}
+.btn-primary {
+    background: linear-gradient(to right, {{ $config->color1 ?? '#007bff' }}, {{ $config->color2 ?? '#0056b3' }}) !important;
+    border: none !important;
+    color: white !important;
+}
+.page-title {
+    color: white;
+    font-size: 24px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
 
-        .card-title {
-            font-size: 15px;
-        }
+.page-title i {
+    font-size: 20px;
+}
 
-        .btn-gray-left {
-            background-color: #d3d3d3;
-            color: #333;
-            border: none;
-            border-top-left-radius: 6px;
-            border-bottom-left-radius: 6px;
-            padding: 0px 14px;
-            font-size: 18px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: background-color 0.2s ease, transform 0.2s ease;
-        }
+/* Search Section */
+.search-wrapper {
+    position: relative;
+    margin-bottom: 12px;
+}
 
-        .btn-gray-right {
-            background-color: #d3d3d3;
-            color: #333;
-            border: none;
-            border-top-right-radius: 6px;
-            border-bottom-right-radius: 6px;
-            padding: 0px 14px;
-            font-size: 18px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: background-color 0.2s ease, transform 0.2s ease;
-        }
+.search-input {
+    width: 100%;
+    padding: 10px 45px 10px 18px;
+    border: none;
+    border-radius: 22px;
+    font-size: 14px;
+    background: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    transition: all 0.3s ease;
+}
 
-        .btn-gray-left:hover {
-            background-color: #c0c0c0;
-            transform: scale(1.05);
-        }
+.search-input:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.3);
+    transform: translateY(-1px);
+}
 
-        .btn-gray-right:hover {
-            background-color: #c0c0c0;
-            transform: scale(1.05);
-        }
+.search-input::placeholder {
+    color: #6c757d;
+    font-size: 14px;
+}
 
-        .count {
-            background-color: #e0e0e0;
-            padding: 1.5px 0px;
-        }
+.search-icon {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #6c757d;
+    pointer-events: none;
+    font-size: 14px;
+}
 
-        .custom-height-offcanvas {
-            height: 95vh !important;
-            border-top-left-radius: 1rem;
-            border-top-right-radius: 1rem;
-            overflow-y: auto;
-            padding: 0;
-        }
+.clear-search {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #6c757d;
+    cursor: pointer;
+    padding: 5px;
+    display: none;
+}
 
-        .custom-height-offcanvas2 {
-            height: 70vh !important;
-            border-top-left-radius: 1rem;
-            border-top-right-radius: 1rem;
-            overflow-y: auto;
-            padding: 0;
-        }
+.clear-search.show {
+    display: block;
+}
 
-        .img-cover-wrapper {
-            position: relative;
-        }
+/* Category Pills */
+.category-pills {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 4px 0;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
 
-        .btn-close-top-left {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            background-color: white;
-            border-radius: 50%;
-            padding: 0.5rem 0.5rem;
-            z-index: 10;
-        }
+.category-pills::-webkit-scrollbar {
+    display: none;
+}
 
-        .text-alret-blue {
-            background-color: #d9fcff;
-        }
+.category-pill {
+    padding: 6px 16px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    font-size: 13px;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+}
 
-        .text-alret-gray {
-            background-color: #f3f3f3;
-        }
+.category-pill:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-1px);
+    color: white;
+    text-decoration: none;
+}
 
-        .btn-plus {
-            background-color: #82f3fd;
-            color: #ffff;
-            border-radius: 50%;
-            border: 0px solid #333;
-            font-size: 20px;
-            padding: 0px 8px;
-        }
+.category-pill.active {
+    background: white;
+    color: #00bcd4;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
 
-        .btn-minus {
-            background-color: #b2f9ff;
-            color: #ffff;
-            border-radius: 50%;
-            border: 0px solid #333;
-            font-size: 20px;
-            padding: 0px 8px;
-        }
 
-        .cart-amount-badge {
-            position: absolute;
-            bottom: 5px;
-            right: 20px;
-            transform: translateX(50%);
-            border: 1px solid #30acff;
-            background-color: #ffffff;
-            color: rgb(0, 0, 0);
-            padding: 2px 10px;
-            font-size: 13px;
-            border-radius: 50%;
-            z-index: 10;
-        }
+.search-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border-radius: 14px;
+    margin-top: 8px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+    max-height: 350px;
+    overflow-y: auto;
+    z-index: 1000;
+    display: none;
+}
 
-        .amount-custom {
-            border: 1px solid #30acff;
-            border-radius: 50%;
-            padding: 0px 8px;
-            color: #30acff;
-        }
+.search-results.show {
+    display: block;
+    animation: slideDown 0.3s ease;
+}
 
-        /* ✅ CSS สำหรับค้นหา */
-        .search-input {
-            border-radius: 25px;
-            padding: 12px 20px;
-            border: 2px solid #e9ecef;
-            font-size: 16px;
-            transition: all 0.3s ease;
-            background-color: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(10px);
-        }
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
 
-        .search-input:focus {
-            border-color: #007bff;
-            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
-            outline: none;
-        }
+.search-result-item {
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    border: 1px solid transparent;
+    padding: 10px 12px;
+}
 
-        .search-results {
-            position: relative;
-            z-index: 1000;
-        }
+.search-result-item:hover {
+    background-color: #f8f9fa;
+    border-color: #dee2e6;
+    transform: translateY(-1px);
+}
 
-        .search-result-item {
-            border-radius: 10px;
-            transition: all 0.2s ease;
-            cursor: pointer;
-            border: 1px solid transparent;
-        }
+.search-result-image {
+    width: 50px;
+    height: 50px;
+    object-fit: cover;
+    border-radius: 6px;
+}
 
-        .search-result-item:hover {
-            background-color: #f8f9fa;
-            border-color: #dee2e6;
-            transform: translateY(-1px);
-        }
+.search-highlight {
+    background-color: #fff3cd;
+    padding: 1px 3px;
+    border-radius: 3px;
+    font-weight: bold;
+    color: #856404;
+}
 
-        .search-result-image {
-            width: 60px;
-            height: 60px;
-            object-fit: cover;
-            border-radius: 8px;
-        }
 
-        .search-highlight {
-            background-color: #fff3cd;
-            padding: 1px 3px;
-            border-radius: 3px;
-            font-weight: bold;
-        }
+.menu-grid {
+    transition: opacity 0.3s ease;
+}
 
-        .menu-grid {
-            transition: opacity 0.3s ease;
-        }
+.menu-grid.searching {
+    opacity: 0.3;
+    pointer-events: none;
+}
 
-        .menu-grid.searching {
-            opacity: 0.3;
-            pointer-events: none;
-        }
+.no-results {
+    text-align: center;
+    padding: 40px 20px;
+}
 
-        @media (max-width: 768px) {
-            .search-input {
-                font-size: 16px; 
-            }
-        }
+.title-food {
+    font-size: 30px;
+    font-weight: bold;
+    color: #000000;
+}
+
+.card-food {
+    background-color: var(--bg-card-food);
+    border-radius: 20px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+    padding: 4px;
+}
+
+.card-title {
+    font-size: 15px;
+}
+
+/* Product Card */
+.product-card {
+    cursor: pointer;
+    border-radius: 10px;
+    transition: transform 0.2s ease;
+}
+
+.product-card:hover {
+    transform: translateY(-2px);
+}
+
+/* Cart Amount Badge */
+.cart-amount-badge {
+    position: absolute;
+    bottom: 5px;
+    right: 20px;
+    transform: translateX(50%);
+    border: 1px solid #30acff;
+    background-color: #ffffff;
+    color: rgb(0, 0, 0);
+    padding: 2px 10px;
+    font-size: 13px;
+    border-radius: 50%;
+    z-index: 10;
+}
+
+.amount-custom {
+    border: 1px solid #30acff;
+    border-radius: 50%;
+    padding: 0px 8px;
+    color: #30acff;
+}
+
+
+.btn-gray-left {
+    background-color: #d3d3d3;
+    color: #333;
+    border: none;
+    border-top-left-radius: 6px;
+    border-bottom-left-radius: 6px;
+    padding: 0px 14px;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.btn-gray-right {
+    background-color: #d3d3d3;
+    color: #333;
+    border: none;
+    border-top-right-radius: 6px;
+    border-bottom-right-radius: 6px;
+    padding: 0px 14px;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.btn-gray-left:hover,
+.btn-gray-right:hover {
+    background-color: #c0c0c0;
+    transform: scale(1.05);
+}
+
+.btn-plus {
+    background-color: #82f3fd;
+    color: #ffff;
+    border-radius: 50%;
+    border: 0px solid #333;
+    font-size: 20px;
+    padding: 0px 8px;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.btn-minus {
+    background-color: #b2f9ff;
+    color: #ffff;
+    border-radius: 50%;
+    border: 0px solid #333;
+    font-size: 20px;
+    padding: 0px 8px;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.btn-plus:hover,
+.btn-minus:hover {
+    transform: scale(1.1);
+}
+
+
+.custom-height-offcanvas {
+    height: 95vh !important;
+    border-top-left-radius: 1rem;
+    border-top-right-radius: 1rem;
+    overflow-y: auto;
+    padding: 0;
+}
+
+.custom-height-offcanvas2 {
+    height: 70vh !important;
+    border-top-left-radius: 1rem;
+    border-top-right-radius: 1rem;
+    overflow-y: auto;
+    padding: 0;
+}
+
+.img-cover-wrapper {
+    position: relative;
+}
+
+.btn-close-top-left {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background-color: white;
+    border-radius: 50%;
+    padding: 0.5rem 0.5rem;
+    z-index: 10;
+}
+
+
+.count {
+    background-color: #e0e0e0;
+    padding: 1.5px 0px;
+}
+
+.text-alret-blue {
+    background-color: #d9fcff;
+}
+
+.text-alret-gray {
+    background-color: #f3f3f3;
+}
+
+.note-count {
+    font-weight: bold;
+    font-size: 1.25rem;
+    min-width: 30px;
+    text-align: center;
+}
+
+.item-card {
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.item-card:hover {
+    background-color: #f8f9fa;
+}
+
+
+@media (max-width: 768px) {
+    
+    
+    .page-title {
+        font-size: 20px;
+    }
+    
+    .page-title i {
+        font-size: 18px;
+    }
+    
+    .search-input {
+        font-size: 16px; /* ป้องกัน zoom บนมือถือ */
+        padding: 9px 40px 9px 16px;
+    }
+    
+    .category-pill {
+        font-size: 12px;
+        padding: 5px 14px;
+    }
+    
+    /* Search results adjustments */
+    .search-result-image {
+        width: 45px;
+        height: 45px;
+    }
+    
+    .search-results {
+        max-height: 300px;
+    }
+    
+    /* Menu grid adjustments */
+    .card-title {
+        font-size: 14px;
+    }
+    
+    .title-food {
+        font-size: 24px;
+    }
+}
+
+@media (max-width: 576px) {
+    /* Extra small devices */
+    .header-section {
+        padding: 10px 10px 14px 10px;
+        border-radius: 0 0 20px 20px;
+    }
+    
+    .page-title {
+        font-size: 18px;
+    }
+    
+    .search-input {
+        padding: 8px 35px 8px 14px;
+    }
+    
+    .category-pills {
+        gap: 6px;
+    }
+    
+    .category-pill {
+        font-size: 11px;
+        padding: 4px 12px;
+    }
+}
     </style>
+
+    <!-- Header Section -->
+    <div class="header-section">
+        <h1 class="page-title">
+            <i class="fas fa-utensils"></i>
+            หมวดหมู่ {{ $currentCategory->name ?? 'เมนูอาหาร' }}
+        </h1>
+        
+        <!-- Search Bar -->
+        <div class="search-wrapper">
+            <input type="text" 
+                   class="search-input" 
+                   id="searchInput"
+                   placeholder="ค้นหาเมนูที่คุณชอบ..." 
+                   autocomplete="off">
+            <i class="fas fa-search search-icon"></i>
+            <button class="clear-search" id="clearSearch">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <!-- Category Pills -->
+        <div class="category-pills">
+            <a href="{{ route('index') }}" class="category-pill">
+                <i class="fas fa-home"></i> ทั้งหมด
+            </a>
+            @foreach($allCategories as $category)
+                <a href="{{ route('detail', $category->id) }}" 
+                   class="category-pill {{ ($currentCategory && $currentCategory->id == $category->id) ? 'active' : '' }}">
+                    {{ $category->name }}
+                </a>
+            @endforeach
+        </div>
+
+        <!-- Search Results Dropdown -->
+        <div class="search-results" id="searchResults">
+            <div id="searchResultsContent"></div>
+        </div>
+    </div>
 
     <div class="container">
         <div class="d-flex flex-column justify-content-center gap-2">
-            <div class="title-food">
-                หมวดอาหาร
-            </div>
             
-            <!--  ส่วนค้นหา -->
-            <div class="search-container mb-3">
-                <div class="position-relative">
-                    <input type="text" 
-                           id="searchInput" 
-                           class="form-control search-input" 
-                           placeholder="🔍 ค้นหาชื่อเมนูอาหาร..." 
-                           autocomplete="off">
-                    <button type="button" 
-                            id="clearSearch" 
-                            class="btn btn-link position-absolute top-50 end-0 translate-middle-y pe-3 d-none"
-                            style="z-index: 10;">
-                        <i class="fas fa-times text-muted"></i>
-                    </button>
-                </div>
-                
-                <!-- ผลลัพธ์การค้นหา -->
-                <div id="searchResults" class="search-results d-none">
-                    <div class="bg-white border rounded-3 shadow-sm mt-2 p-3">
-                        <div id="searchResultsContent"></div>
-                    </div>
-                </div>
-                
-                <div id="noResults" class="text-center py-4 d-none">
-                    <i class="fas fa-search fa-2x text-muted mb-2"></i>
-                    <h6 class="text-muted">ไม่พบเมนูที่ค้นหา</h6>
-                    <p class="text-muted small">ลองใช้คำค้นหาอื่น หรือเลือกจากเมนูด้านล่าง</p>
-                </div>
+            <!-- แสดงข้อความเมื่อไม่พบผลลัพธ์ -->
+            <div id="noResults" class="text-center py-4 d-none">
+                <i class="fas fa-search fa-2x text-muted mb-2"></i>
+                <h6 class="text-muted">ไม่พบเมนูที่ค้นหา</h6>
+                <p class="text-muted small">ลองใช้คำค้นหาอื่น หรือเลือกจากเมนูด้านล่าง</p>
             </div>
 
             <!--  เมนูทั้งหมด -->
@@ -272,7 +531,7 @@
                             <div class="col">
                                 <div class="p-0 pt-2 text-start" style="background-color: transparent;">
                                     <h5 class="m-0 card-title">{{ $rs['name'] }}</h5>
-                                    <p class="fw-bold card-title mb-0">{{ $rs['base_price'] }}</p>
+                                    <p class="fw-bold card-title mb-0">{{ $rs['base_price'] }} ฿</p>
                                 </div>
                             </div>
                         </div>
@@ -303,7 +562,7 @@
                                 </div>
                                 
                                 <div class="col-3 text-start text-end fs-5 fw-bold" style="line-height: 1.0;">
-                                    {{ $rs['base_price'] }} <br>
+                                    {{ $rs['base_price'] }} ฿<br>
                                     <span class="text-muted"
                                         style="font-size: 14px; font-weight: normal;">ราคาเริ่มต้น</span>
                                 </div>
@@ -398,13 +657,13 @@
                         <div class="d-flex justify-content-between align-items-center px-3 pt-3">
                             <h5 class="offcanvas-title fw-bold mb-0 fs-5  product-name">{{ $rs['name'] }}</h5>
                             <span class="text-end fs-5 fw-bold" style="line-height: 1.0;">
-                                {{ $rs['base_price'] }} <br>
+                                {{ $rs['base_price'] }} ฿<br>
                                 <span class="text-muted" style="font-size: 14px; font-weight: normal;">ราคาเริ่มต้น</span>
                             </span>
                         </div>
                         <hr class="my-2">
                         <div class="offcanvas-body pt-1 px-3">
-                           
+                            <!-- JavaScript จะเติมข้อมูลสินค้า id ตรงกันไว้ตรงนี้ -->
                         </div>
                         <div class="fixed-bottom py-3"
                             style="background-color: white; z-index: 999; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5); border: none;">
@@ -421,9 +680,9 @@
         </div>
     </div>
 
-    <script>
+   <script>
 document.addEventListener('DOMContentLoaded', function() {
-    //  JavaScript สำหรับค้นหา
+    // ✅ JavaScript สำหรับค้นหา
     const searchInput = document.getElementById('searchInput');
     const clearSearchBtn = document.getElementById('clearSearch');
     const searchResults = document.getElementById('searchResults');
@@ -438,7 +697,7 @@ document.addEventListener('DOMContentLoaded', function() {
     menuData = @json($menu);
     @endif
     
-    //  function ตรวจสอบการเลือกที่บังคับ 
+    // ✅ เพิ่ม function ตรวจสอบการเลือกที่บังคับ ไว้ด้านบน
     function validateRequiredSelections(rsId) {
         const rsCheckboxes = Array.from(document.querySelectorAll(
             `.option-checkbox[data-rs-id="${rsId}"]`));
@@ -550,7 +809,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (menuCard) {
                     hideSearchResults();
                     searchInput.value = '';
-                    clearSearchBtn.classList.add('d-none');
+                    clearSearchBtn.classList.remove('show');
                     
                     menuCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     
@@ -563,19 +822,24 @@ document.addEventListener('DOMContentLoaded', function() {
             searchResultsContent.appendChild(resultItem);
         });
         
-        searchResults.classList.remove('d-none');
+        searchResults.classList.add('show');
         noResults.classList.add('d-none');
         menuGrid.classList.add('searching');
     }
     
     function showNoResults() {
-        searchResults.classList.add('d-none');
-        noResults.classList.remove('d-none');
+        searchResultsContent.innerHTML = `
+            <div style="padding: 20px; text-align: center; color: #6c757d;">
+                <i class="fas fa-search" style="font-size: 24px; margin-bottom: 10px;"></i>
+                <div>ไม่พบเมนูที่ค้นหา</div>
+            </div>
+        `;
+        searchResults.classList.add('show');
         menuGrid.classList.add('searching');
     }
     
     function hideSearchResults() {
-        searchResults.classList.add('d-none');
+        searchResults.classList.remove('show');
         noResults.classList.add('d-none');
         menuGrid.classList.remove('searching');
     }
@@ -591,9 +855,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const query = this.value.trim();
         
         if (query) {
-            clearSearchBtn.classList.remove('d-none');
+            clearSearchBtn.classList.add('show');
         } else {
-            clearSearchBtn.classList.add('d-none');
+            clearSearchBtn.classList.remove('show');
             hideSearchResults();
         }
         
@@ -605,13 +869,13 @@ document.addEventListener('DOMContentLoaded', function() {
     
     clearSearchBtn.addEventListener('click', function() {
         searchInput.value = '';
-        this.classList.add('d-none');
+        this.classList.remove('show');
         hideSearchResults();
         searchInput.focus();
     });
     
     document.addEventListener('click', function(e) {
-        if (!e.target.closest('.search-container')) {
+        if (!e.target.closest('.header-section')) {
             hideSearchResults();
         }
     });
@@ -681,6 +945,7 @@ document.addEventListener('DOMContentLoaded', function() {
             addToCartBtn?.removeAttribute('hidden');
             backMenuBtn?.setAttribute('hidden', true);
 
+            // ✅ ตรวจสอบการเลือกที่บังคับ
             validateRequiredSelections(productId);
 
             closeAllOffcanvas();
@@ -766,6 +1031,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             } else {
                                 addToCartBtn?.removeAttribute('hidden');
                                 backMenuBtn?.setAttribute('hidden', true);
+                                // ✅ ตรวจสอบการเลือกที่บังคับ
                                 validateRequiredSelections(productId);
                             }
                             closeAllOffcanvas();
@@ -816,6 +1082,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 addToCartBtn?.removeAttribute('hidden');
                 backMenuBtn?.setAttribute('hidden', true);
 
+                // ✅ ตรวจสอบการเลือกที่บังคับ
                 validateRequiredSelections(productId);
             }
             
@@ -895,6 +1162,7 @@ document.addEventListener('DOMContentLoaded', function() {
             priceLabel.textContent = totalPrice.toFixed(2);
         }
 
+        // ✅ ตรวจสอบการเลือกครบถ้วนตามที่กำหนด
         validateRequiredSelections(rsId);
         updateTotalPrice(rsId);
     }
@@ -921,6 +1189,7 @@ document.addEventListener('DOMContentLoaded', function() {
             addToCartBtn?.removeAttribute('hidden');
             backMenuBtn?.setAttribute('hidden', true);
             
+            // ✅ ตรวจสอบการเลือกตัวเลือกที่บังคับ
             validateRequiredSelections(rsId);
         }
 
