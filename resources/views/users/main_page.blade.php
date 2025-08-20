@@ -160,15 +160,14 @@ $config = Config::first();
 </div>
 @endif
 
-<div class="container mt-1">
+<!-- <div class="container mt-1">
     <div class="d-flex flex-column justify-content-center">
-        <!-- แสดงเวลาปัจจุบัน -->
         <div class="current-time">
             <p class="current-time-text">
                 <i class="fas fa-clock me-1"></i>
                 เวลาปัจจุบัน: <span id="current-time"></span>
             </p>
-        </div>
+        </div> -->
 
         <div class="title-food" style="color: black;">
     หมวดอาหาร
